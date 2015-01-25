@@ -4,6 +4,8 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 
+\usepackage{listings}
+
 \newcommand{\titleString}{Use of noisy constraints in Protein Structure
 Prediction}
 \newcommand{\groupName}{Methionine}
@@ -60,7 +62,14 @@ which has to be run as a preliminary step.
 	i.e. those that are expected to guide the prediction towards the native structure.
 \end{description}
 
+\subsection{Technology Used}
+
+The project's software consists of python and shell scripts that are used to
+handle the constraint analysis and subset generation,
+calls to Rosetta, overall analysis and plotting.
+
 \subsection{Goal and Approach of this Project}
+\label{sec:GoalApp}
 %TODO split goal <-> approach??
 
 In this project, noisy constraints were used.
@@ -70,6 +79,7 @@ as the contact prediction step is inaccurate.
 The challenge is to make use of the constraint set despite their noisiness.
 The approach in this project basically contained three steps:
 \begin{enumerate}
+
 	%TODO conc. wording: group or subset? In the code, we said group,
 	% but I think subset is better here.
 	\item Constraint subsets
@@ -83,37 +93,92 @@ The approach in this project basically contained three steps:
 	contains native constraints or not.
 \end{enumerate}
 
+Two hypotheses were stated at the beginning and will be discussed in the following sections:
+1) The native constraints produce better predictions.
+2) The chance of a constraint to be native is higher if it is compatible with other constraints.
+
 \subsubsection*{Subset Generation}
-As it is computationally not feasible to run the structure prediction
-for every possible subset of the noisy constraints,
+As it is computationally not feasible to run the structure prediction for every possible subset of the noisy constraints,
 a heuristic has to be used, to get subsets that are promising.
-
-In this project, subsets were generated based on the information of secondary structure:
-Every constraint contains two residues that it constrains.
-%TODO wortspielkasse!? or:
-% How to explain the concept of contraint->two residues -> two secondary structures -> one subset
-Each residue position in the sequence belongs to a specified secondary structure.
-A subset consists of all constraints that link one secondary structure to another.
+This heuristic takes additional problem-specific information into account to shrink the search space to feasible cardinality.
+The additional information can be mined from multiple sources, as e. g. 
+\emph{a)} the distribution of the positions of input constraints on the sequence,
+\emph{b)} priority by type of constraint source, for instance evolutionary based constraints over distances on decoys, or
+\emph{c)} the secondary structure.
+In this project, subsets were generated based on the information of secondary structure, whereas the successive steps of the analysis are independent of the heuristic and can be applied with any grouping. The subset generation based on the secondary structure works as follows:\\
+Every constraint defines a desired spatial distance between two residues.
+Given that the secondary structure of a sequence of residues is known, one can easily group the constraints based on the two secondary structures of the residues.
+Thus, any subset can be identified by the two secondary structures, between which all constraints of this subsets are located.
 %TODO example and figure
-
-%TODO explain reasons, why we did this: cf. milestone 1:
-% compatibility, parallel/crossing constraints etc.
+We assume, that the problem of identifying the secondary structure membership of a residue is already solvable with a high accuracy. 
+If we consider the secondary structure of the protein to be rigid in a sense, that the energetic properties are minimal, it is unlikely, that the structure prediction improves by employment of constraints with both residues located in the same secondary structure. 
+If a group is instead between two distinct rigid parts of the protein, the chance is higher, that Rosetta is able to enable the constraints during the folding process. 
+In other words, the constraints are more likely to be compatible with each other. 
+For that reason, we also leave out the constraint groups that are identified by at least one loop.
 
 %\subsection{Penalty of Constraints}
 %TODO Describe scoring and rescoring?
 
-\subsection{Technology Used}
-
-The project's software consists of python and shell scripts that are used to
-handle the constraint analysis and subset generation,
-calls to Rosetta, overall analysis and plotting.
-
 \section{Analysis and Results}
-The following assumptions were made:
-1) The native constraints produce better predictions.
-%TODO this can be seen in the results, so this is not an assumption.
-2) The chance of a constraint to be native is higher if it is compatible
-with other constraints.
+\begin{figure}
+    \centering
+    \begin{tabular}{ r || l | l }
+      group & precision & recall \\
+      \hline
+      0 & 0         & 0 \\
+      1 & 16.67     & 1.37 \\
+      2 & 0         & 0 \\
+      3 & 61.54     & 10.96 \\
+      4 & 52.63     & 13.7 \\
+      5 & 33.33     & 10.96 \\
+      6 & 72.22     & 35.65 \\
+    \end{tabular}
+\caption{properties of the constraint groups of example protein 2krkA}
+\label{fig:precisionRecall}
+\end{figure}
+In this section we will analyze the procedure presented in the \autoref{sec:GoalApp}. In analogy this section will contain three parts for each step in the procedure, namely the grouping, the rosetta run, and the choice of promising groups.
+\subsection{Analysis of the grouping}
+In \autoref{fig:precisionRecall} one can see, that some groups are meaningful, others are not. 
+The precision and recall is computed based on the distances in the native structure and can not be used for the procedure. 
+The table instead gives an idea of how well the grouping based on that simple heuristic works.
+\subsection{Rosetta ab initio and scoring}
+\begin{figure}
+    \centering
+    \begin{lstlisting}
+    ./AbinitioRelax.linuxgccrelease
+    
+    -in:file:fasta input/2krkA/2krkA.fasta
+    -in:file:frag3 input/2krkA/2krkA.200.3mers
+    -in:file:frag9 input/2krkA/2krkA.200.9mers
+    -in:file:native input/2krkA/2krkA.pdb
+    
+    -constraints:cst_file constraints.txt
+    
+    -out:nstruct 100
+    -out:pdb
+    
+    -mute core.io.database
+    -database /rosetta-3.5/rosetta_database/
+    -abinitio:relax -relax:fast
+    \end{lstlisting}
+    \caption{Example call of Rosetta ab initio relax with which the experiment results were created}
+    \label{fig:rosettaCall}
+\end{figure}
+
+For every group of constraints Rosetta ab initio is run with producing 100 decoys, as shown in \autoref{fig:rosettaCall}. In Rosetta, the constraints are enforced by adding a penalty function to the energy function for each constraint. The constraint type used is called \emph{bounded}, which corresponds to hydrogen bonds, that can occur in nature in a distance interval between close to zero and eight angstrom. Hence, the penalty function is set to have minima in that interval.
+
+Since the energy function is modified by the constraints, it is not accurate to account the resulting scores. Instead to produce comparable results, the produced decoys are re-scored without a modified energy function.
+
+\subsection{Choice of groups}
+We chose different metrics to analyze the results of the Rosetta run. In principle the most common metrics are the Rosetta Energy Score and the GDT. %TODO: explain GDT
+We added the \emph{ratio of enabled constraints} as another metric to compare the results. This metric corresponds to the idea of compatibility of a constraint set, because if Rosetta is able to enable all constraints given, it is proven, that the constraints are compatible, likewise if Rosetta fails to enable most of the constraints, it is a good indication for the set containing either not compatible, or not native constraints.
+
+It turned out, that the energy score is not meaningful, instead there is very few difference between using \emph{a)} all native constraints, \emph{b)} a random subset set of all input constraints, or \emph{c)} no constraints at all.\\
+In contrast, the GDT shows significant difference comparing the decoys with all native constraints and other groups: The similarity to the native structure is very high when the native constraints are enforced. Unfortunately the GDT cannot be used for an iterative algorithm to predict the structure, because the native structure is unknown.\\
+Finally, the metric of \emph{enabled constraints} shows a high variance over the groups and there is a meaningful relation between the values of precision / recall and the ratio of  enabled constraints. %TODO: boxplot constraints enabled as on the poster
+By analyzing protein 2krkA it shows, that the highest precision is in groups 3 and 6, where the highest ratio of enabled constraints can be found in groups 1, 3 and 6.
+
+By accounting group size, one can see that group 1 contains only 6 constraints, where group 3 contains 13 and group 6 contains 36 constraints. Clearly Rosetta has more difficulties to enable a larger number of constraints and by taking that into consideration, one can come up with a reasonable decider which group to choose best.
 
 \section{Insights}
 
