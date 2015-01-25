@@ -31,11 +31,99 @@ Prediction}
 
 \maketitle
 
-% Sections according to https://www.isis.tu-berlin.de/2.0/mod/assign/view.php?id=84719:
+% According to https://www.isis.tu-berlin.de/2.0/mod/assign/view.php?id=84719:
 % try to focus on the analysis of your results and the insights and future work you got from the projects.
+
+%\section*{Abstract}
+%TODO should we have an abstract? i dont think so. this is just a reminder to discuss it.
+
 \section{Introduction}
-\section{Analysis of Results}
+
+\subsection{Background}
+
+Ab initio protein structure prediction is hard.
+%TODO reformulate previous sentence more scientific
+To make it easier, ab initio protein structure prediction
+can be enhanced by \emph{constraints}.
+A constraints is an information about the proximity of residues in the native protein.
+This information can be used to guide the prediction and possibly improve it.
+Typically, a set of constraints is used together to guide the search.
+These constraints can for example be a result of protein contact prediction,
+which has to be run as a preliminary step.
+%TODO can you say "has to be run"?
+%TODO reference to Schneider/Brock 2014
+
+\subsubsection*{Definitions}
+\begin{description}
+	\item[fulfilled constraints] are constraints that are within the range of $0$ and $8$ angstrom in a protein (decoy or native).
+	\item[native constraints] are the fulfilled constraints in the native protein,
+	i.e. those that are expected to guide the prediction towards the native structure.
+\end{description}
+
+\subsection{Goal and Approach of this Project}
+%TODO split goal <-> approach??
+
+In this project, noisy constraints were used.
+That means, most of the constraints are misleading (i.e. not native),
+as the contact prediction step is inaccurate.
+%TODO reference to amount, e.g. 63 natives of 225 for 2h3jA
+The challenge is to make use of the constraint set despite their noisiness.
+The approach in this project basically contained three steps:
+\begin{enumerate}
+	%TODO conc. wording: group or subset? In the code, we said group,
+	% but I think subset is better here.
+	\item Constraint subsets
+	were generated through a heuristic from which it was expected to get
+	a high percentage of native constraints.
+
+	\item The protein structure was predicted with these subsets of constraints as input.
+
+	\item The information available (i.e. decoy scores and fulfilled constraints)
+	was exploited to predict whether a subset
+	contains native constraints or not.
+\end{enumerate}
+
+\subsubsection*{Subset Generation}
+As it is computationally not feasible to run the structure prediction
+for every possible subset of the noisy constraints,
+a heuristic has to be used, to get subsets that are promising.
+
+In this project, subsets were generated based on the information of secondary structure:
+Every constraint contains two residues that it constrains.
+%TODO wortspielkasse!? or:
+% How to explain the concept of contraint->two residues -> two secondary structures -> one subset
+Each residue position in the sequence belongs to a specified secondary structure.
+A subset consists of all constraints that link one secondary structure to another.
+%TODO example and figure
+
+%TODO explain reasons, why we did this: cf. milestone 1:
+% compatibility, parallel/crossing constraints etc.
+
+%\subsection{Penalty of Constraints}
+%TODO Describe scoring and rescoring?
+
+\subsection{Technology Used}
+
+The project's software consists of python and shell scripts that are used to
+handle the constraint analysis and subset generation,
+calls to Rosetta, overall analysis and plotting.
+
+\section{Analysis and Results}
+The following assumptions were made:
+1) The native constraints produce better predictions.
+%TODO this can be seen in the results, so this is not an assumption.
+2) The chance of a constraint to be native is higher if it is compatible
+with other constraints.
+
 \section{Insights}
+
 \section{Future Work}
 
+\subsection{Iterative Algorithm}
+
+\subsection{Predict non Native Constraint Subsets}
+
+\subsection{Adapting Weights}
+
+\subsection{Other Heuristics}
 \end{document}
