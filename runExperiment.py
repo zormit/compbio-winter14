@@ -123,8 +123,8 @@ def runRosetta(constraintFile, inputPath, outputPath, proteinID, numGroups, grou
                     if constraintIndex in sampleSet:
                         if identifier == "nativesTrueConstraints":
                             newRow = c["row"].rstrip().split(" ")
-                            newRow[6] = newRow[8]
-                            newRow = " ".join(newRow)+"\n"
+                            newRow[7] = newRow[11]
+                            newRow = " ".join(newRow[:-1])+"\n"
                             subConstraints.write(newRow)
                         else:
                             subConstraints.write(c["row"])
@@ -134,7 +134,7 @@ def runRosetta(constraintFile, inputPath, outputPath, proteinID, numGroups, grou
         if not args.debug:
             relaxFlags = ['-abinitio:relax',
                          '-relax:fast']
-            nStruct = 100
+            nStruct = 20
         else:
             # debug mode => not relaxing yet ;)
             relaxFlags = []

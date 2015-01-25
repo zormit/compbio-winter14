@@ -116,7 +116,7 @@ def generateOccurencyConstraintScores(constraintsFilename, length, window):
 
 
 def generateNativeContraints(constraintsFilename, n=75):
-    constraintPositions = np.genfromtxt(constraintsFilename, dtype=float, usecols=(2,4,8))
+    constraintPositions = np.genfromtxt(constraintsFilename, dtype=float, usecols=(2,4,11))
     constraintPositions[:,:2] -= 1 # shift, to let it start by 0 instead 1
     adjacency = np.zeros((n,n),dtype=int) # initialize with 0
 

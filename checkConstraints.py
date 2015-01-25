@@ -29,25 +29,29 @@ def constraintsEnabledInDecoy(decoyFilename, constraintsFilename, threshold = 8.
     cmd.load(decoyFilename, decoyLabel)
     decoyDistances = list()
     try:
-        constraints = np.genfromtxt(constraintsFilename, dtype=None, usecols=(1,2,3,4,6))
+        constraints = np.genfromtxt(constraintsFilename, dtype=None, usecols=(1,2,3,4,6,7))
     except IOError as e:
         return [False]
 
     if constraints.ndim == 0:
         constraints = constraints.reshape(1)
 
-    penalties = []
-    for atomA, posA, atomB, posB,penalty in constraints:
+    lowerBounds = []
+    upperBounds = []
+    for atomA, posA, atomB, posB, lowerBound, upperBound in constraints:
         template = "{}///{}/{}"
-        penalties.append(penalty)
+        lowerBounds.append(lowerBound)
+        upperBounds.append(upperBound)
         # cmd.distance would draw the constraints
         decoyDistances.append(cmd.get_distance(
                     template.format(decoyLabel,posA,atomA),
                     template.format(decoyLabel,posB,atomB)))
     decoyDistances = np.array(decoyDistances)
+    lowerBounds = np.array(lowerBounds)
+    upperBounds = np.array(upperBounds)
 
-    # enabled means, it is less than the penalty. TODO: establish other (harmonic) definition
-    constraintsEnabled = np.abs(decoyDistances-penalties)<1.5
+    # enabled means, it is inside the bounds.
+    constraintsEnabled = np.logical_and(lowerBounds <= decoyDistances, decoyDistances <= upperBounds)
 
     return constraintsEnabled
 
@@ -126,10 +130,6 @@ def checkConstraints(realProteinFilename, decoyFilename, constraintsFilename, th
     return precision, recall
 
 if __name__ == "__main__":
-    realProtein = "Data/input/2h3jA.pdb"
-    decoy = "Data/input/2h3jA.pdb"
-    constraints = "Data/input/2h3jA_contact_constraints.txt"
-    #TODO this will fail
-
-    precision, recall = checkConstraints(realProtein, decoy, constraints)
-    print precision, recall
+    decoy = "/home/neeb/Data/input-bounded/2h3jA/2h3jA.pdb"
+    constraints = "/home/neeb/Data/input-bounded/2h3jA/2h3jA_contact_constraints.txt"
+    print constraintsEnabledInDecoy(decoy, constraints)
