@@ -29,11 +29,14 @@ import secondaryStructurePrediction
 def parse_args():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('inputPath', help='path to input directory')
-    parser.add_argument('outputPath', help='path to output directory')
-    parser.add_argument('proteinID', help='ID of protein (has to correspond with path&files)')
-    parser.add_argument('-d', '--debug', help='run a light version of rosetta', action='store_true')
-    parser.add_argument('-v','--verbose', help='be talkative', action="store_true")
+    parser.add_argument('input_path', help='path to input directory')
+    parser.add_argument('output_path', help='path to output directory')
+    parser.add_argument('protein_ID',
+                help='ID of protein (has to correspond with path&files)')
+    parser.add_argument('-d', '--debug', action='store_true',
+                help='run a light version of rosetta')
+    parser.add_argument('-v', '--verbose', action="store_true",
+                help='be talkative')
 
     return parser.parse_args()
 
@@ -68,6 +71,28 @@ def setup_logger(args):
 
     return logger
 
+def generate_constraint_subsets(input_path, protein_ID, logger):
+    # STEP 1: generate constraint groups, i.e. subsets of all constraints
+    logger.info("starting: generate constraint groups")
+
+    nativeFile = "{}.pdb".format( join(input_path, protein_ID) )
+
+    secondaryStructure = secondaryStructurePrediction.extractSecondaryStructure(nativeFile)
+    sequenceLength = len(secondaryStructure)
+    logger.info("secondary structure:{}".format(secondaryStructure))
+    logger.debug("sequence length:{}".format(sequenceLength))
+
+    constraintFile = checkConstraints.writeDistancesToConstraintFile(nativeFile, input_path, protein_ID)
+
+    adjacency, counts, unique = constraintSubsets.generateSSContraintSubsets(secondaryStructure, constraintFile)
+    numGroups = len(unique)
+
+    adjacencyRand = constraintSubsets.generateRandomGroups(sequenceLength,constraintFile,counts,unique)
+
+    adjacency_nat = constraintSubsets.generateNativeContraints(constraintFile, sequenceLength)
+    logger.info("finished: generate constraint groups")
+
+
 def main(argv=None):
 
     # append argv to system argv if existing
@@ -84,53 +109,18 @@ def main(argv=None):
         logger = setup_logger(args)
         logger.debug("start program with the following args: {}".format(args))
 
+        # append protein ID to both paths
+        protein_input_path = join(args.input_path, args.protein_ID)
+        protein_output_path = join(args.output_path, args.protein_ID)
+
+        generate_constraint_subsets(protein_input_path, args.protein_ID, logger)
+
     except KeyboardInterrupt:
         ### handle keyboard interrupt silently ###
         return 0
 
 if __name__ == "__main__":
     sys.exit(main())
-
-# parameters
-probabilityThreshold= 1.5
-
-# the imports seem not to work, when loaded as module,
-# that's why this function is copied here. TODO: fix somehow?
-def extractSecondaryStructure(filename):
-    label = 'targetStructure'
-    #TODO: some more reasonable error message, when file doesn't exist
-    cmd.load(filename, label)
-
-    pymol.stored_ss = []
-    cmd.iterate(label, 'stored_ss.append(ss)')
-
-    secondaryStructure = ''.join(pymol.stored_ss)
-
-    return secondaryStructure
-
-# parse commandline arguments
-inputPath = join(args.inputPath, args.proteinID)
-outputPath = join(args.outputPath, args.proteinID)
-
-
-# STEP 1: generate constraint groups, i.e. subsets of all constraints
-logging.info("starting STEP 1: generate constraint groups")
-
-nativeFile = "{}.pdb".format( join(inputPath, args.proteinID) )
-
-secondaryStructure = extractSecondaryStructure(nativeFile)
-sequenceLength = len(secondaryStructure)
-logging.debug("secondary structure:{}".format(secondaryStructure))
-logging.debug("sequence length:{}".format(sequenceLength))
-
-constraintFile = checkConstraints.writeDistancesToConstraintFile(nativeFile, inputPath, args.proteinID)
-
-adjacency, counts, unique = constraintSubsets.generateSSContraintSubsets(secondaryStructure, constraintFile)
-numGroups = len(unique)
-
-adjacencyRand = constraintSubsets.generateRandomGroups(len(secondaryStructure),constraintFile,counts,unique)
-
-adjacency_nat = constraintSubsets.generateNativeContraints(constraintFile, sequenceLength)
 
 # STEP 2: Run with all groups of constraints individually and compare with baseline
 
@@ -170,7 +160,7 @@ def runRosetta(constraintFile, inputPath, outputPath, proteinID, numGroups, grou
         logging.debug("writing sub-constraints to:{}".format(subConstraintsFilename))
         with open(subConstraintsFilename, 'w') as subConstraints:
             for i,c in enumerate(constraints):
-                if c["probability"] >= probabilityThreshold:
+                if c["probability"] >= 1.5: #TODO: hardcoded
                     if constraintIndex in sampleSet:
                         if identifier == "nativesTrueConstraints":
                             newRow = c["row"].rstrip().split(" ")
@@ -250,7 +240,7 @@ runRosetta(constraintFile, inputPath, outputPath, args.proteinID, 1, None, [0], 
 
 
 # Run for Rosetta Baseline:
-runRosetta(constraintFile, inputPath, outputPath, args.proteinID, 1, None, [0], np.zeros((sequenceLength,sequenceLength),dtype=int)-1, "baseline")
+runRosetta(constraintFile, inputPath, outputPath, args.proteinID, 1, None, [0], np.zeros(adjacency.shape,dtype=int)-1, "baseline")
 
 # Run for Rosetta all groups of constraints individually
 runRosetta(constraintFile, inputPath, outputPath, args.proteinID, numGroups, None, unique, adjacency, "individual")
