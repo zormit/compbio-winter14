@@ -216,9 +216,36 @@ By accounting group size, one can see that group 1 contains only 6 constraints, 
 
 \subsection{Iterative Algorithm}
 
+The constraint subsets could be used in an iterative algorithm,
+where the grouping or the weights are modified in each iteration
+and the information on fulfilled constraints after each prediction
+guides the search.
+
 \subsection{Predict non Native Constraint Subsets}
+
+Instead of predicting native constraints and use them,
+the same pipeline could be used to filter out bad constraints.
+For example, in \texttt{group0individual} and \texttt{group2individual}
+in Figure \ref{fig:enabledConstraints}, the ratio of enabled constraints is low,
+where also the ratio of native constraints is low.
+The principle would be to exclude them from further subsets.
 
 \subsection{Adapting Weights}
 
-\subsection{Other Heuristics}
+In this project we used the standard weight of $1.5$ in the constraint penalty function.
+But certainly, the effect of weights should be investigated in the context of
+noisy constraints.
+
+\subsection{Different Subset Generation Techniques}
+
+The main idea of this project was subset generation based on a heuristic,
+i.e. trying to exploit the information available.
+The heuristic that was investigated here, was based on the type of secondary structure.
+But there is a lot of other information that could have an influence on the quality
+of a constraint subset, for example:
+\begin{itemize}
+\item distance of the residues on the sequence
+\item atom and sidechain of corresponding to the constraint
+\item in a second step (cf. Iterative Algorithms), group all constraints that were fulfilled or had a specific distance pattern in the decoy.
+\end{itemize}
 \end{document}
