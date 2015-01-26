@@ -185,6 +185,7 @@ def protein_structure_prediction(input_path, output_path, protein_ID,
             if f.endswith('default.out'):
                 os.remove(join(inputDir,f))
         logger.debug("moved results to {}. finished a rosetta-run".format(outputDir))
+    logger.info("finished: PSP for all constraint subsets".format(outputDir))
 
 def main(argv=None):
 
