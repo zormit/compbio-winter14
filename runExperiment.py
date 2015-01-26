@@ -25,6 +25,17 @@ from time import strftime
 import constraintSubsets
 import checkConstraints
 
+def parse_args():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('inputPath', help='path to input directory')
+    parser.add_argument('outputPath', help='path to output directory')
+    parser.add_argument('proteinID', help='ID of protein (has to correspond with path&files)')
+    parser.add_argument('-d', '--debug', help='run a light version of rosetta', action='store_true')
+    parser.add_argument('-v','--verbose', help='be talkative', action="store_true")
+
+    return parser.parse_args()
+
 def main(argv=None):
 
     # append argv to system argv if existing
@@ -34,7 +45,10 @@ def main(argv=None):
         sys.argv.extend(argv)
 
     try:
-        pass
+        # Process arguments
+        args = parse_args()
+        if args.debug:
+            print(args)
 
     except KeyboardInterrupt:
         ### handle keyboard interrupt silently ###
@@ -61,13 +75,6 @@ def extractSecondaryStructure(filename):
     return secondaryStructure
 
 # parse commandline arguments
-parser = argparse.ArgumentParser()
-parser.add_argument('inputPath', help='path to input directory')
-parser.add_argument('outputPath', help='path to output directory')
-parser.add_argument('proteinID', help='ID of protein (has to correspond with path&files)')
-parser.add_argument('--debug', help='flag for run a light version of rosetta', action='store_true')
-
-args = parser.parse_args()
 inputPath = join(args.inputPath, args.proteinID)
 outputPath = join(args.outputPath, args.proteinID)
 
