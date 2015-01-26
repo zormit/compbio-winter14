@@ -102,47 +102,30 @@ def protein_structure_prediction(input_path, output_path, protein_ID,
 
     logger.info("starting: PSP for all constraint subsets")
 
-    # Assign Probability
-    constraints = []
+    constraint_residues = np.genfromtxt(constraint_filename,
+                        dtype=None, usecols=(2,4))
+    constraint_residues -= 1 # shift, to let it start by 0 instead 1
 
-    # load constraint file into dictionary
-    with open(constraint_filename) as baseConstraints:
-        for i, l in enumerate(baseConstraints):
-            row = l.split(' ')
-            a, b = int(row[2])-1,int(row[4])-1
-            c = {"positions":[a,b], "row":l, "probability":0}
-            constraints.append(c)
+    # fill subset ID back to the each line
+    subset_ID_mask = subset_graph[constraint_residues[:,0], constraint_residues[:,1]]
+
+    # load file as array of lines
+    with open(constraint_filename) as constraint_file:
+        constraints = np.array(constraint_file.readlines())
 
     for group, subset_ID in enumerate(subset_IDs):
-        numConstraintsCurrent = 0
-        for c in constraints:
-            a,b = c["positions"]
-            if subset_graph[a,b] == subset_ID:
-                # current constraint belongs to current group
-                # => set to some weight
-                c["probability"] = 1.5 # TODO: hardcoded! -> but never used as value: it just has to be >= threshold.
-                numConstraintsCurrent += 1
-            else:
-                # reset previous weighting
-                c["probability"] = 0
 
-        constraintIndex = 0
-        # Create Constraint File with previously chosen constraints (according to group)
+        # copy subset to its own file
         prefix, suffix = constraint_filename.rsplit('.',1)
-        subConstraintsFilename = "{}_subset.{}".format(prefix,suffix)
-        logger.debug("writing sub-constraints to:{}".format(subConstraintsFilename))
-        with open(subConstraintsFilename, 'w') as subConstraints:
-            for i,c in enumerate(constraints):
-                if c["probability"] >= 1.5: #TODO: hardcoded
-                    if dir_prefix == "nativesTrueConstraints":
-                        newRow = c["row"].rstrip().split(" ")
-                        newRow[7] = newRow[11]
-                        newRow = " ".join(newRow[:-1])+"\n"
-                        subConstraints.write(newRow)
-                    else:
-                        subConstraints.write(c["row"])
-                    constraintIndex += 1
-        # TODO: the previous three blocks might fit into one.
+        subset_filename = "{}_subset.{}".format(prefix,suffix)
+        logger.debug("writing sub-constraints to:{}".format(subset_filename))
+        with open(subset_filename, 'w') as subset:
+            #TODO allow for changed weights
+            subset_indices = np.where(subset_ID_mask==subset_ID)
+            subset.writelines(
+                    constraints[subset_indices])
+
+        subset_size = len(subset_indices[0])
 
         if not debug:
             relaxFlags = ['-abinitio:relax',
@@ -165,14 +148,15 @@ def protein_structure_prediction(input_path, output_path, protein_ID,
 
         ## Run Prediction
         #TODO: hardcoded path
-        logger.info("starting rosetta-run for {}_{} at {}".format(dir_prefix, group,
-                                                                    strftime('%H:%M:%S')))
+        logger.info(("starting rosetta-run for {}_{} "+
+                    "with {} constraints at {}").format(dir_prefix, group,
+                                        subset_size, strftime('%H:%M:%S')))
         rosetta_cmd = ['/home/lassner/rosetta-3.5/rosetta_source/bin/AbinitioRelax.linuxgccrelease',
             '-in:file:fasta', sequenceFile,
             '-in:file:frag3', frag3File,
             '-in:file:frag9', frag9File,
             '-in:file:native', nativeFile,
-            '-constraints:cst_file', subConstraintsFilename,
+            '-constraints:cst_file', subset_filename,
             '-out:nstruct', str(nStruct),
             '-out:pdb',
             '-mute core.io.database',
@@ -188,7 +172,7 @@ def protein_structure_prediction(input_path, output_path, protein_ID,
 
         # backup subConstraints file with results
         subprocess.call(['cp',
-            subConstraintsFilename,
+            subset_filename,
             outputDir], stdout=FNULL, stderr=subprocess.STDOUT)
 
         inputDir = os.getcwd()
