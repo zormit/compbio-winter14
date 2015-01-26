@@ -1,8 +1,4 @@
 from __future__ import division
-import __main__
-__main__.pymol_argv = ['pymol','-qc'] # Pymol: quiet and no GUI
-import pymol
-pymol.finish_launching()
 from pymol import cmd
 import numpy as np
 import pdb

@@ -6,11 +6,6 @@ from os.path import isfile, isdir, join
 import shutil
 import pdb
 import subprocess
-import __main__
-__main__.pymol_argv = ['pymol','-qc'] # Pymol: quiet and no GUI
-import pymol
-pymol.finish_launching()
-from pymol import cmd
 import numpy as np
 import random
 import argparse
@@ -21,9 +16,15 @@ import matplotlib.pylab as plt
 import logging
 from time import strftime
 
-# own imports
+# pymol has to be launched at the root-file-level, to not break stdout.
+import pymol
+pymol.pymol_argv = ['pymol', '-qc'] # Pymol: quiet and no GUI
+pymol.finish_launching()
+
+# own imports (after pymol launch!)
 import constraintSubsets
 import checkConstraints
+import secondaryStructurePrediction
 
 def parse_args():
 

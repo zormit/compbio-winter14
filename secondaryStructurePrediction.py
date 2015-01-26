@@ -1,7 +1,4 @@
-import __main__
-__main__.pymol_argv = ['pymol','-qc'] # Pymol: quiet and no GUI
 import pymol
-pymol.finish_launching()
 from pymol import cmd
 
 def extractSecondaryStructure(filename):
@@ -14,7 +11,3 @@ def extractSecondaryStructure(filename):
     secondaryStructure = ''.join(pymol.stored_ss)
 
     return secondaryStructure
-
-s = extractSecondaryStructure("Data/input/2h3jA.pdb")
-print s
-print len(s)
