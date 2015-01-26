@@ -36,6 +36,37 @@ def parse_args():
 
     return parser.parse_args()
 
+def setup_logger(args):
+    # according to https://docs.python.org/2/howto/logging-cookbook.html
+
+    logger = logging.getLogger('nocap')
+    logger.setLevel(logging.DEBUG)
+
+    # create file handler which logs even debug messages
+    file_handler = logging.FileHandler('nocap.log')
+    file_handler.setLevel(logging.DEBUG)
+
+    # create console handler with a higher log level dependent on verbosity
+    console_handler = logging.StreamHandler()
+    if args.verbose:
+        console_handler.setLevel(logging.INFO)
+    else:
+        console_handler.setLevel(logging.ERROR)
+
+
+    # create formatter and add it to the handlers
+    file_formatter = logging.Formatter('%(asctime)s (%(name)s - %(levelname)s): %(message)s',
+                                       datefmt='%y-%m-%d %H:%M:%S')
+    file_handler.setFormatter(file_formatter)
+    console_formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+    console_handler.setFormatter(console_formatter)
+
+    # add the handlers to the logger
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+
+    return logger
+
 def main(argv=None):
 
     # append argv to system argv if existing
@@ -47,8 +78,10 @@ def main(argv=None):
     try:
         # Process arguments
         args = parse_args()
-        if args.debug:
-            print(args)
+
+        # start logging
+        logger = setup_logger(args)
+        logger.debug("start program with the following args: {}".format(args))
 
     except KeyboardInterrupt:
         ### handle keyboard interrupt silently ###
@@ -78,14 +111,6 @@ def extractSecondaryStructure(filename):
 inputPath = join(args.inputPath, args.proteinID)
 outputPath = join(args.outputPath, args.proteinID)
 
-# set loglevel
-if args.debug:
-    numeric_level = logging.DEBUG
-else:
-    numeric_level = logging.INFO
-logging.basicConfig(level=numeric_level)
-logging.basicConfig(filename='runExperiment.log', filemode='w', level=logging.DEBUG)
-# TODO: why does'nt this file-logging work?
 
 # STEP 1: generate constraint groups, i.e. subsets of all constraints
 logging.info("starting STEP 1: generate constraint groups")
