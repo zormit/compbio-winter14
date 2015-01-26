@@ -25,6 +25,24 @@ from time import strftime
 import constraintSubsets
 import checkConstraints
 
+def main(argv=None):
+
+    # append argv to system argv if existing
+    if argv is None:
+        argv = sys.argv
+    else:
+        sys.argv.extend(argv)
+
+    try:
+        pass
+
+    except KeyboardInterrupt:
+        ### handle keyboard interrupt silently ###
+        return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+
 # parameters
 probabilityThreshold= 1.5
 
