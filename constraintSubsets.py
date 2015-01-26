@@ -2,10 +2,9 @@ import numpy as np
 import matplotlib.pylab as plt
 import pdb
 import scipy.stats
-import logging
 import random
 
-def generateSSContraintSubsets(secondaryStructure, constraintsFilename, numGroups=None):
+def generateSSContraintSubsets(secondaryStructure, constraintsFilename, logger, numGroups=None):
 
     n = len(secondaryStructure)
 
@@ -38,7 +37,7 @@ def generateSSContraintSubsets(secondaryStructure, constraintsFilename, numGroup
     unique, counts = unique[1:], counts[1:]
 
     maxNumGroups = len(unique)
-    logging.debug("there are {} different SS groups".format(maxNumGroups))
+    logger.info("there are {} different SS groups".format(maxNumGroups))
 
     if numGroups==None:
         numGroups=maxNumGroups

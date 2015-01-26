@@ -82,9 +82,11 @@ def generate_constraint_subsets(input_path, protein_ID, logger):
     logger.info("secondary structure:{}".format(secondaryStructure))
     logger.debug("sequence length:{}".format(sequenceLength))
 
-    constraintFile = checkConstraints.writeDistancesToConstraintFile(nativeFile, input_path, protein_ID)
+    constraintFile = checkConstraints.writeDistancesToConstraintFile(
+                                nativeFile, input_path, protein_ID, logger)
 
-    adjacency, counts, unique = constraintSubsets.generateSSContraintSubsets(secondaryStructure, constraintFile)
+    adjacency, counts, unique = constraintSubsets.generateSSContraintSubsets(
+                                secondaryStructure, constraintFile, logger)
 
     #TODO: generate other subsets via parameters to this function.
     #adjacencyRand = constraintSubsets.generateRandomGroups(sequenceLength,constraintFile,counts,unique)

@@ -3,7 +3,6 @@ from pymol import cmd
 import numpy as np
 import pdb
 import os
-import logging
 
 
 def nativeConstraintsInDecoy(decoyFilename, constraintsFilename):
@@ -51,7 +50,7 @@ def constraintsEnabledInDecoy(decoyFilename, constraintsFilename, threshold = 8.
 
     return constraintsEnabled
 
-def writeDistancesToConstraintFile(realProteinFilename, inputPath, proteinID):
+def writeDistancesToConstraintFile(realProteinFilename, inputPath, proteinID, logger):
     groundTruthLabel = 'groundTruth'
     cmd.load(realProteinFilename, groundTruthLabel)
 
@@ -72,7 +71,7 @@ def writeDistancesToConstraintFile(realProteinFilename, inputPath, proteinID):
             inputPath, 'generated',
             '{}_contact_constraints_withNativeDistances.txt'.format(proteinID))
 
-    logging.debug("writing file: {}".format(constraintWithDistFilename))
+    logger.debug("writing file: {}".format(constraintWithDistFilename))
 
     # add distance to each line of the old file
     with open(constraintWithDistFilename, 'w') as newConstraintsFile:
