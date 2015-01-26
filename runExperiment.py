@@ -115,9 +115,14 @@ def protein_structure_prediction(input_path, output_path, protein_ID,
 
     for group, subset_ID in enumerate(subset_IDs):
 
-        # copy subset to its own file
-        prefix, suffix = constraint_filename.rsplit('.',1)
-        subset_filename = "{}_subset.{}".format(prefix,suffix)
+        # create directory for results and constraint subset-file
+        output_dir = join(output_path, '{}_{}'.format(dir_prefix, group))
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        # copy subset to its own file. name generated from base constraint file
+        prefix, suffix = os.path.split(constraint_filename)[-1].rsplit('.',1)
+        subset_filename = join(output_dir, "{}_subset.{}".format(prefix,suffix))
         logger.debug("writing sub-constraints to:{}".format(subset_filename))
         with open(subset_filename, 'w') as subset:
             #TODO allow for changed weights
@@ -166,26 +171,17 @@ def protein_structure_prediction(input_path, output_path, protein_ID,
             stdout=FNULL, stderr=subprocess.STDOUT)
 
         ## Copy Results
-        outputDir = join(output_path, '{}_{}'.format(dir_prefix, group))
-        if not os.path.exists(outputDir):
-            os.makedirs(outputDir)
-
-        # backup subConstraints file with results
-        subprocess.call(['cp',
-            subset_filename,
-            outputDir], stdout=FNULL, stderr=subprocess.STDOUT)
-
         inputDir = os.getcwd()
         #TODO: hardcoded file-matchers
         files = [ f for f in os.listdir(inputDir) if isfile(join(inputDir,f)) ]
         for f in files:
             if f.endswith('.pdb') or f.endswith('score.fsc'):
-                shutil.move(join(inputDir,f),join(outputDir,f))
+                shutil.move(join(inputDir,f),join(output_dir,f))
 
             if f.endswith('default.out'):
                 os.remove(join(inputDir,f))
-        logger.debug("moved results to {}. finished a rosetta-run".format(outputDir))
-    logger.info("finished: PSP for all constraint subsets".format(outputDir))
+        logger.debug("moved results to {}. finished a rosetta-run".format(output_dir))
+    logger.info("finished: PSP for all constraint subsets".format(output_dir))
 
 def main(argv=None):
 
