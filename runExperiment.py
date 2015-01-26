@@ -85,12 +85,13 @@ def generate_constraint_subsets(input_path, protein_ID, logger):
     constraintFile = checkConstraints.writeDistancesToConstraintFile(nativeFile, input_path, protein_ID)
 
     adjacency, counts, unique = constraintSubsets.generateSSContraintSubsets(secondaryStructure, constraintFile)
-    numGroups = len(unique)
 
-    adjacencyRand = constraintSubsets.generateRandomGroups(sequenceLength,constraintFile,counts,unique)
-
-    adjacency_nat = constraintSubsets.generateNativeContraints(constraintFile, sequenceLength)
+    #TODO: generate other subsets via parameters to this function.
+    #adjacencyRand = constraintSubsets.generateRandomGroups(sequenceLength,constraintFile,counts,unique)
+    #adjacency_nat = constraintSubsets.generateNativeContraints(constraintFile, sequenceLength)
     logger.info("finished: generate constraint groups")
+
+    return constraintFile, adjacency, unique
 
 
 def main(argv=None):
@@ -113,7 +114,10 @@ def main(argv=None):
         protein_input_path = join(args.input_path, args.protein_ID)
         protein_output_path = join(args.output_path, args.protein_ID)
 
-        generate_constraint_subsets(protein_input_path, args.protein_ID, logger)
+        # generate constraint subsets based on secondary structure
+        constraint_filename, subset_graph, subset_IDs = (
+            generate_constraint_subsets(protein_input_path,
+                                        args.protein_ID, logger))
 
     except KeyboardInterrupt:
         ### handle keyboard interrupt silently ###
