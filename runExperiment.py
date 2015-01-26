@@ -94,6 +94,112 @@ def generate_constraint_subsets(input_path, protein_ID, logger):
     return constraintFile, adjacency, unique
 
 
+def protein_structure_prediction(input_path, output_path, protein_ID,
+                constraint_filename, subset_graph, subset_IDs,
+                dir_prefix, logger, debug):
+
+    logger.info("starting: PSP for all constraint subsets")
+
+    # Assign Probability
+    constraints = []
+
+    # load constraint file into dictionary
+    with open(constraint_filename) as baseConstraints:
+        for i, l in enumerate(baseConstraints):
+            row = l.split(' ')
+            a, b = int(row[2])-1,int(row[4])-1
+            c = {"positions":[a,b], "row":l, "probability":0}
+            constraints.append(c)
+
+    for group, subset_ID in enumerate(subset_IDs):
+        numConstraintsCurrent = 0
+        for c in constraints:
+            a,b = c["positions"]
+            if subset_graph[a,b] == subset_ID:
+                # current constraint belongs to current group
+                # => set to some weight
+                c["probability"] = 1.5 # TODO: hardcoded! -> but never used as value: it just has to be >= threshold.
+                numConstraintsCurrent += 1
+            else:
+                # reset previous weighting
+                c["probability"] = 0
+
+        constraintIndex = 0
+        # Create Constraint File with previously chosen constraints (according to group)
+        prefix, suffix = constraint_filename.rsplit('.',1)
+        subConstraintsFilename = "{}_subset.{}".format(prefix,suffix)
+        logger.debug("writing sub-constraints to:{}".format(subConstraintsFilename))
+        with open(subConstraintsFilename, 'w') as subConstraints:
+            for i,c in enumerate(constraints):
+                if c["probability"] >= 1.5: #TODO: hardcoded
+                    if dir_prefix == "nativesTrueConstraints":
+                        newRow = c["row"].rstrip().split(" ")
+                        newRow[7] = newRow[11]
+                        newRow = " ".join(newRow[:-1])+"\n"
+                        subConstraints.write(newRow)
+                    else:
+                        subConstraints.write(c["row"])
+                    constraintIndex += 1
+        # TODO: the previous three blocks might fit into one.
+
+        if not debug:
+            relaxFlags = ['-abinitio:relax',
+                         '-relax:fast']
+            nStruct = 20
+        else:
+            # debug mode => not relaxing yet ;)
+            relaxFlags = []
+            nStruct = 2
+
+        # Standard Filenames.
+        # TODO: put in some config?
+        filePrefix = join(input_path, protein_ID)
+        sequenceFile = "{}.fasta".format(filePrefix)
+        frag3File = "{}.200.3mers".format(filePrefix)
+        frag9File = "{}.200.9mers".format(filePrefix)
+        nativeFile = "{}.pdb".format(filePrefix)
+
+        FNULL = open(os.devnull, 'w')
+
+        ## Run Prediction
+        #TODO: hardcoded path
+        logger.info("starting rosetta-run for {}_{} at {}".format(dir_prefix, group,
+                                                                    strftime('%H:%M:%S')))
+        rosetta_cmd = ['/home/lassner/rosetta-3.5/rosetta_source/bin/AbinitioRelax.linuxgccrelease',
+            '-in:file:fasta', sequenceFile,
+            '-in:file:frag3', frag3File,
+            '-in:file:frag9', frag9File,
+            '-in:file:native', nativeFile,
+            '-constraints:cst_file', subConstraintsFilename,
+            '-out:nstruct', str(nStruct),
+            '-out:pdb',
+            '-mute core.io.database',
+            '-database', '/home/lassner/rosetta-3.5/rosetta_database/']+relaxFlags
+        logger.debug("executing rosetta with:{}".format(" ".join(rosetta_cmd)))
+        subprocess.call(rosetta_cmd,
+            stdout=FNULL, stderr=subprocess.STDOUT)
+
+        ## Copy Results
+        outputDir = join(output_path, '{}_{}'.format(dir_prefix, group))
+        if not os.path.exists(outputDir):
+            os.makedirs(outputDir)
+
+        # backup subConstraints file with results
+        subprocess.call(['cp',
+            subConstraintsFilename,
+            outputDir], stdout=FNULL, stderr=subprocess.STDOUT)
+
+        inputDir = os.getcwd()
+        #TODO: hardcoded file-matchers
+        files = [ f for f in os.listdir(inputDir) if isfile(join(inputDir,f)) ]
+        for f in files:
+            if f.endswith('.pdb') or f.endswith('score.fsc'):
+                shutil.move(join(inputDir,f),join(outputDir,f))
+
+            if f.endswith('default.out'):
+                os.remove(join(inputDir,f))
+        logger.debug("moved results to {}. finished a rosetta-run".format(outputDir))
+
 def main(argv=None):
 
     # append argv to system argv if existing
@@ -119,6 +225,13 @@ def main(argv=None):
             generate_constraint_subsets(protein_input_path,
                                         args.protein_ID, logger))
 
+        # predict structures for every subset of constraints base on secondary structure
+        dir_prefix = "secstruct"
+        protein_structure_prediction(
+                protein_input_path, protein_output_path, args.protein_ID,
+                constraint_filename, subset_graph, subset_IDs,
+                dir_prefix, logger, args.debug)
+
     except KeyboardInterrupt:
         ### handle keyboard interrupt silently ###
         return 0
@@ -126,115 +239,7 @@ def main(argv=None):
 if __name__ == "__main__":
     sys.exit(main())
 
-# STEP 2: Run with all groups of constraints individually and compare with baseline
 
-def runRosetta(constraintFile, inputPath, outputPath, proteinID, numGroups, groupSize, unique, adjacency, identifier=""):
-    # Assign Probability
-    constraints = []
-
-    # load constraint file into dictionary
-    with open(constraintFile) as baseConstraints:
-        for i, l in enumerate(baseConstraints):
-            row = l.split(' ')
-            a, b = int(row[2])-1,int(row[4])-1
-            c = {"positions":[a,b], "row":l, "probability":0}
-            constraints.append(c)
-
-    for group in range(numGroups):
-        numConstraintsCurrent = 0
-        for c in constraints:
-            a,b = c["positions"]
-            if adjacency[a,b] == unique[group]:
-                # current constraint belongs to current group
-                # => set to some weight
-                c["probability"] = 1.5 # TODO: hardcoded! -> but never used as value: it just has to be >= threshold.
-                numConstraintsCurrent += 1
-            else:
-                # reset previous weighting
-                c["probability"] = 0
-
-        sampleSet = range(numConstraintsCurrent)
-        if not groupSize is None and groupSize <= numConstraintsCurrent:
-            sampleSet = np.array(random.sample(sampleSet, groupSize))
-
-        constraintIndex = 0
-        # Create Constraint File with previously chosen constraints (according to group)
-        prefix, suffix = constraintFile.rsplit('.',1)
-        subConstraintsFilename = "{}_exp.{}".format(prefix,suffix)
-        logging.debug("writing sub-constraints to:{}".format(subConstraintsFilename))
-        with open(subConstraintsFilename, 'w') as subConstraints:
-            for i,c in enumerate(constraints):
-                if c["probability"] >= 1.5: #TODO: hardcoded
-                    if constraintIndex in sampleSet:
-                        if identifier == "nativesTrueConstraints":
-                            newRow = c["row"].rstrip().split(" ")
-                            newRow[7] = newRow[11]
-                            newRow = " ".join(newRow[:-1])+"\n"
-                            subConstraints.write(newRow)
-                        else:
-                            subConstraints.write(c["row"])
-                    constraintIndex += 1
-        # TODO: the previous three blocks might fit into one.
-
-        if not args.debug:
-            relaxFlags = ['-abinitio:relax',
-                         '-relax:fast']
-            nStruct = 20
-        else:
-            # debug mode => not relaxing yet ;)
-            relaxFlags = []
-            nStruct = 2
-
-        # Standard Filenames.
-        # TODO: put in some config?
-        filePrefix = join(inputPath, proteinID)
-        sequenceFile = "{}.fasta".format(filePrefix)
-        frag3File = "{}.200.3mers".format(filePrefix)
-        frag9File = "{}.200.9mers".format(filePrefix)
-        nativeFile = "{}.pdb".format(filePrefix)
-
-        FNULL = open(os.devnull, 'w')
-
-        ## Run Prediction
-        #TODO: hardcoded path
-        logging.info("starting rosetta-run for group{}{} at {}".format(group, identifier,
-                                                                    strftime('%H:%M:%S')))
-        rosetta_cmd = ['/home/lassner/rosetta-3.5/rosetta_source/bin/AbinitioRelax.linuxgccrelease',
-            '-in:file:fasta', sequenceFile,
-            '-in:file:frag3', frag3File,
-            '-in:file:frag9', frag9File,
-            '-in:file:native', nativeFile,
-            '-constraints:cst_file', subConstraintsFilename,
-            '-out:nstruct', str(nStruct),
-            '-out:pdb',
-            '-mute core.io.database',
-            '-database', '/home/lassner/rosetta-3.5/rosetta_database/']+relaxFlags
-        logging.debug("executing rosetta with:{}".format(" ".join(rosetta_cmd)))
-        subprocess.call(rosetta_cmd,
-            stdout=FNULL, stderr=subprocess.STDOUT)
-
-        ## Copy Results
-        outputDir = join(outputPath, 'group{}{}'.format(group, identifier))
-        if not os.path.exists(outputDir):
-            os.makedirs(outputDir)
-
-        # backup subConstraints file with results
-        subprocess.call(['cp',
-            subConstraintsFilename,
-            outputDir], stdout=FNULL, stderr=subprocess.STDOUT)
-
-        inputDir = os.getcwd()
-        #TODO: hardcoded file-matchers
-        files = [ f for f in os.listdir(inputDir) if isfile(join(inputDir,f)) ]
-        for f in files:
-            if f.endswith('.pdb') or f.endswith('score.fsc'):
-                shutil.move(join(inputDir,f),join(outputDir,f))
-
-            if f.endswith('default.out'):
-                os.remove(join(inputDir,f))
-        logging.debug("moved results to {}. finished a rosetta-run".format(outputDir))
-
-logging.info("starting STEP 2: run with all groups individually")
 
 # Example Run for Rosetta native constraints only
 runRosetta(constraintFile, inputPath, outputPath, args.proteinID, 1, None, [0], adjacency_nat, "natives")
