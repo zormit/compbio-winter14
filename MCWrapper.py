@@ -1,1 +1,0 @@
-ssh lassner@compbio1.robotics.tu-berlin.de /home/lassner/rosetta-3.5/rosetta_source/bin/compbio_app.linuxgccdebug @flags2h3jA -database /home/lassner/rosetta-3.5/rosetta_database/
