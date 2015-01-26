@@ -57,9 +57,9 @@ which has to be run as a preliminary step.
 
 \subsubsection*{Definitions}
 \begin{description}
-	\item[fulfilled constraints] are constraints that are within the range of $0$ and $8$ angstrom in a protein (decoy or native).
-	\item[native constraints] are the fulfilled constraints in the native protein,
-	i.e. those that are expected to guide the prediction towards the native structure.
+  \item[fulfilled constraints] are constraints that are within the range of $0$ and $8$ angstrom in a protein (decoy or native).
+  \item[native constraints] are the fulfilled constraints in the native protein,
+  i.e. those that are expected to guide the prediction towards the native structure.
 \end{description}
 
 \subsection{Technology Used}
@@ -80,17 +80,17 @@ The challenge is to make use of the constraint set despite their noisiness.
 The approach in this project basically contained three steps:
 \begin{enumerate}
 
-	%TODO conc. wording: group or subset? In the code, we said group,
-	% but I think subset is better here.
-	\item Constraint subsets
-	were generated through a heuristic from which it was expected to get
-	a high percentage of native constraints.
+  %TODO conc. wording: group or subset? In the code, we said group,
+  % but I think subset is better here.
+  \item Constraint subsets
+  were generated through a heuristic from which it was expected to get
+  a high percentage of native constraints.
 
-	\item The protein structure was predicted with these subsets of constraints as input.
+  \item The protein structure was predicted with these subsets of constraints as input.
 
-	\item The information available (i.e. decoy scores and fulfilled constraints)
-	was exploited to predict whether a subset
-	contains native constraints or not.
+  \item The information available (i.e. decoy scores and fulfilled constraints)
+  was exploited to predict whether a subset
+  contains native constraints or not.
 \end{enumerate}
 
 Two hypotheses were stated at the beginning and will be discussed in the following sections:
@@ -173,14 +173,44 @@ Since the energy function is modified by the constraints, it is not accurate to 
 We chose different metrics to analyze the results of the Rosetta run. In principle the most common metrics are the Rosetta Energy Score and the GDT. %TODO: explain GDT
 We added the \emph{ratio of enabled constraints} as another metric to compare the results. This metric corresponds to the idea of compatibility of a constraint set, because if Rosetta is able to enable all constraints given, it is proven, that the constraints are compatible, likewise if Rosetta fails to enable most of the constraints, it is a good indication for the set containing either not compatible, or not native constraints.
 
-It turned out, that the energy score is not meaningful, instead there is very few difference between using \emph{a)} all native constraints, \emph{b)} a random subset set of all input constraints, or \emph{c)} no constraints at all.\\
-In contrast, the GDT shows significant difference comparing the decoys with all native constraints and other groups: The similarity to the native structure is very high when the native constraints are enforced. Unfortunately the GDT cannot be used for an iterative algorithm to predict the structure, because the native structure is unknown.\\
-Finally, the metric of \emph{enabled constraints} shows a high variance over the groups and there is a meaningful relation between the values of precision / recall and the ratio of  enabled constraints. %TODO: boxplot constraints enabled as on the poster
+It turned out, that the energy score is not meaningful, instead there is very few difference between using \emph{a)} all native constraints, \emph{b)} a random subset set of all input constraints, or \emph{c)} no constraints at all. This can be seen in \autoref{fig:EnergyNativeBaselineRandom}\\
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{EnergyNativeBaselineRandom.png}
+    \caption{This image shows, that there is not a significant improvement of energy score between the decoys with native constraints and other, like the baseline (with no constraints) and a group with a random set of constraints picked from the input file. Note, that this scoring is done seperately from the ab initio and the energy function does not include constraint penalties.}
+    \label{fig:EnergyNativeBaselineRandom}
+\end{figure}
+    
+In contrast, the GDT shows significant difference comparing the decoys with all native constraints and other groups: The similarity to the native structure is very high when the native constraints are enforced (see \autoref{fig:GdtNativeBaselineRandom}). Unfortunately the GDT cannot be used for an iterative algorithm to predict the structure, because the native structure is unknown.\\
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{GdtNativeBaselineRandom.png}
+    \caption{This image shows the improvement of employing the native constraints. This demonstrates the importance of employing the correct constraints.}
+    \label{fig:GdtNativeBaselineRandom}
+\end{figure}
+
+Finally, the metric of \emph{enabled constraints} shows a high variance over the groups and there is a meaningful relation between the values of precision / recall and the ratio of enabled constraints (\autoref{fig:enabledConstraints}). 
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{enabledConstraintsIndividual.png}
+    \caption{Ratio of enabled constraints for all decoys generated}
+    \label{fig:enabledConstraints}
+\end{figure}
+    
 By analyzing protein 2krkA it shows, that the highest precision is in groups 3 and 6, where the highest ratio of enabled constraints can be found in groups 1, 3 and 6.
 
 By accounting group size, one can see that group 1 contains only 6 constraints, where group 3 contains 13 and group 6 contains 36 constraints. Clearly Rosetta has more difficulties to enable a larger number of constraints and by taking that into consideration, one can come up with a reasonable decider which group to choose best.
 
 \section{Insights}
+
+\begin{enumerate}
+\item A high percentage of enabled constraints in a decoy also increases the percentage of native constraints in the subset.
+% TODO: maybe formulate a decider, that takes the group size into account? \item The prediction accuracy does not increase with the chosen group.
+\item The grouping based on secondary structure does not contain a high percentage of native constraints in every case.
+\item The size of the group has an influence on the prediction quality and the percentage of enabled constraints.
+\item The Rosetta energy function does not reveal any insight about the noisiness of the constraints
+\end{enumerate}
+
 
 \section{Future Work}
 
