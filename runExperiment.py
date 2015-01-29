@@ -191,6 +191,26 @@ def protein_structure_prediction(input_path, output_paths, protein_ID,
         subprocess.call(rosetta_cmd,
             stdout=FNULL, stderr=subprocess.STDOUT)
 
+def rescore_prediction(input_path,output_paths, protein_ID, logger):
+
+    native_file = "{}.pdb".format( join(input_path, protein_ID) )
+
+    for output_dir in output_paths:
+        pdbfiles = [ join(output_dir, f) for f in os.listdir(output_dir)
+                     if isfile(join(output_dir, f)) and f.endswith('.pdb')]
+        import ipdb; ipdb.set_trace()
+        pdbfiles.sort()
+
+        logger.debug("rescoring {}".format(output_dir))
+        FNULL = open(os.devnull, 'w')
+        subprocess.call(['/home/lassner/rosetta-3.5/rosetta_source/bin/score.linuxgccrelease',
+            '-in:file:s']+pdbfiles+[
+            '-in:file:fullatom',
+            '-out:file:scorefile', join(output_dir, 'scoreV2.fsc'), # TODO: hardcoded.
+            '-native', native_file,
+            '-database', '/home/lassner/rosetta-3.5/rosetta_database/'],
+            stdout=FNULL, stderr=subprocess.STDOUT)
+
 
 def main(argv=None):
 
@@ -229,6 +249,9 @@ def main(argv=None):
                 protein_input_path, prediction_paths_all, args.protein_ID,
                 subset_basefilename, logger, args.debug)
 
+        rescore_prediction(protein_input_path, prediction_paths_all,
+                                                args.protein_ID, logger)
+
     except KeyboardInterrupt:
         ### handle keyboard interrupt silently ###
         return 0
@@ -251,19 +274,6 @@ for d in dirIds:
     if d in os.listdir(outputPath) and isdir(join(outputPath,d)):
         dirs.append(d)
 
-for d in dirs:
-    pdbfiles = [ join(outputPath,d,f) for f in os.listdir(join(outputPath,d)) if isfile(join(outputPath, d,f)) and f.endswith('.pdb')]
-    pdbfiles.sort()
-    ## Run different scoring
-    logging.debug("rescoring {}".format(d))
-    FNULL = open(os.devnull, 'w')
-    subprocess.call(['/home/lassner/rosetta-3.5/rosetta_source/bin/score.linuxgccrelease',
-        '-in:file:s']+pdbfiles+[
-        '-in:file:fullatom',
-        '-out:file:scorefile', join(outputPath, d, 'scoreV3.fsc'), # TODO: hardcoded.
-        '-native', nativeFile,
-        '-database', '/home/lassner/rosetta-3.5/rosetta_database/'],
-        stdout=FNULL, stderr=subprocess.STDOUT)
 
 scores = []
 gdts = []
