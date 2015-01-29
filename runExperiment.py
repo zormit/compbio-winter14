@@ -10,6 +10,7 @@ import numpy as np
 import random
 import argparse
 import matplotlib as mpl
+
 mpl.use('Agg')
 # http://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server
 import matplotlib.pylab as plt
@@ -18,7 +19,8 @@ from time import strftime
 
 # pymol has to be launched at the root-file-level, to not break stdout.
 import pymol
-pymol.pymol_argv = ['pymol', '-qc'] # Pymol: quiet and no GUI
+
+pymol.pymol_argv = ['pymol', '-qc']  # Pymol: quiet and no GUI
 pymol.finish_launching()
 
 # own imports (after pymol launch!)
@@ -26,19 +28,20 @@ import constraintSubsets
 import checkConstraints
 import secondaryStructurePrediction
 
-def parse_args():
 
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('input_path', help='path to input directory')
     parser.add_argument('output_path', help='path to output directory')
     parser.add_argument('protein_ID',
-                help='ID of protein (has to correspond with path&files)')
+                        help='ID of protein (has to correspond with path&files)')
     parser.add_argument('-d', '--debug', action='store_true',
-                help='run a light version of rosetta')
+                        help='run a light version of rosetta')
     parser.add_argument('-v', '--verbose', action="store_true",
-                help='be talkative')
+                        help='be talkative')
 
     return parser.parse_args()
+
 
 def setup_logger(args):
     # according to https://docs.python.org/2/howto/logging-cookbook.html
@@ -57,7 +60,6 @@ def setup_logger(args):
     else:
         console_handler.setLevel(logging.ERROR)
 
-
     # create formatter and add it to the handlers
     file_formatter = logging.Formatter('%(asctime)s (%(name)s - %(levelname)s): %(message)s',
                                        datefmt='%y-%m-%d %H:%M:%S')
@@ -71,11 +73,12 @@ def setup_logger(args):
 
     return logger
 
+
 def generate_constraint_subsets(input_path, protein_ID, logger):
     # STEP 1: generate constraint groups, i.e. subsets of all constraints
     logger.info("starting: generate constraint groups")
 
-    nativeFile = "{}.pdb".format( join(input_path, protein_ID) )
+    nativeFile = "{}.pdb".format(join(input_path, protein_ID))
 
     secondaryStructure = secondaryStructurePrediction.extractSecondaryStructure(nativeFile)
     sequenceLength = len(secondaryStructure)
@@ -83,13 +86,13 @@ def generate_constraint_subsets(input_path, protein_ID, logger):
     logger.debug("sequence length:{}".format(sequenceLength))
 
     constraintFile = checkConstraints.writeDistancesToConstraintFile(
-                                nativeFile, input_path, protein_ID, logger)
+        nativeFile, input_path, protein_ID, logger)
 
     subset_graph_SS, counts, subset_IDs = constraintSubsets.generateSSContraintSubsets(
-                                secondaryStructure, constraintFile, logger)
+        secondaryStructure, constraintFile, logger)
 
     subset_graph_rand = constraintSubsets.generateRandomGroups(sequenceLength,
-                                        constraintFile, counts, subset_IDs)
+                                                               constraintFile, counts, subset_IDs)
     subset_graph_native = constraintSubsets.generateNativeContraints(constraintFile, sequenceLength)
 
     subset_graph_all = np.zeros(subset_graph_native.shape, dtype=int)
@@ -98,7 +101,7 @@ def generate_constraint_subsets(input_path, protein_ID, logger):
     subset_IDs_all = [subset_IDs, subset_IDs, [0], [0], [0]]
     subset_labels = ["secstruct", "random", "native", "all", "baseline"]
     subset_graphs = [subset_graph_SS, subset_graph_rand,
-            subset_graph_native, subset_graph_all, subset_graph_baseline]
+                     subset_graph_native, subset_graph_all, subset_graph_baseline]
 
     logger.info("finished: generate constraint groups")
 
@@ -106,21 +109,20 @@ def generate_constraint_subsets(input_path, protein_ID, logger):
 
 
 def write_constraint_subset_files(output_path, constraint_filename,
-                subset_graph, subset_IDs, dir_prefix, logger):
-
+                                  subset_graph, subset_IDs, dir_prefix, logger):
     constraint_residues = np.genfromtxt(constraint_filename,
-                        dtype=None, usecols=(2,4))
-    constraint_residues -= 1 # shift, to let it start by 0 instead 1
+                                        dtype=None, usecols=(2, 4))
+    constraint_residues -= 1  # shift, to let it start by 0 instead 1
 
     # fill subset ID back to the each line
-    subset_ID_mask = subset_graph[constraint_residues[:,0], constraint_residues[:,1]]
+    subset_ID_mask = subset_graph[constraint_residues[:, 0], constraint_residues[:, 1]]
 
     # load file as array of lines
     with open(constraint_filename) as constraint_file:
         constraints = np.array(constraint_file.readlines())
 
-    prefix, suffix = os.path.split(constraint_filename)[-1].rsplit('.',1)
-    subset_basefilename = "{}_subset.{}".format(prefix,suffix)
+    prefix, suffix = os.path.split(constraint_filename)[-1].rsplit('.', 1)
+    subset_basefilename = "{}_subset.{}".format(prefix, suffix)
 
     output_dirs = []
 
@@ -136,23 +138,23 @@ def write_constraint_subset_files(output_path, constraint_filename,
         subset_filename = join(output_dir, subset_basefilename)
         logger.debug("writing sub-constraints to:{}".format(subset_filename))
         with open(subset_filename, 'w') as subset:
-            #TODO allow for changed weights
-            subset_indices = np.where(subset_ID_mask==subset_ID)
+            # TODO allow for changed weights
+            subset_indices = np.where(subset_ID_mask == subset_ID)
             subset.writelines(
-                    constraints[subset_indices])
+                constraints[subset_indices])
 
     return output_dirs, subset_basefilename
 
-def protein_structure_prediction(input_path, output_paths, protein_ID,
-                                subset_basefilename, logger, debug):
 
+def protein_structure_prediction(input_path, output_paths, protein_ID,
+                                 subset_basefilename, logger, debug):
     logger.info("starting: PSP for all constraint subsets")
 
     for output_dir in output_paths:
 
         if not debug:
             relaxFlags = ['-abinitio:relax',
-                         '-relax:fast']
+                          '-relax:fast']
             nStruct = 20
         else:
             # debug mode => not relaxing yet ;)
@@ -171,75 +173,74 @@ def protein_structure_prediction(input_path, output_paths, protein_ID,
         FNULL = open(os.devnull, 'w')
 
         ## Run Prediction
-        #TODO: hardcoded path
+        # TODO: hardcoded path
         logger.info(("starting rosetta-run on {} at {}").format(
-                                    subset_filename, strftime('%H:%M:%S')))
+            subset_filename, strftime('%H:%M:%S')))
         rosetta_cmd = ['/home/lassner/rosetta-3.5/rosetta_source/bin/AbinitioRelax.linuxgccrelease',
-            '-in:file:fasta', sequenceFile,
-            '-in:file:frag3', frag3File,
-            '-in:file:frag9', frag9File,
-            '-in:file:native', nativeFile,
-            '-constraints:cst_file', subset_filename,
-            '-out:nstruct', str(nStruct),
-            '-out:pdb',
-            '-out:path', output_dir,
-            '-out:sf', join(output_dir, 'score.fsc'),
-            '-out:file:silent', join(output_dir, 'default.out'),
-            '-mute core.io.database',
-            '-database', '/home/lassner/rosetta-3.5/rosetta_database/']+relaxFlags
+                       '-in:file:fasta', sequenceFile,
+                       '-in:file:frag3', frag3File,
+                       '-in:file:frag9', frag9File,
+                       '-in:file:native', nativeFile,
+                       '-constraints:cst_file', subset_filename,
+                       '-out:nstruct', str(nStruct),
+                       '-out:pdb',
+                       '-out:path', output_dir,
+                       '-out:sf', join(output_dir, 'score.fsc'),
+                       '-out:file:silent', join(output_dir, 'default.out'),
+                       '-mute core.io.database',
+                       '-database', '/home/lassner/rosetta-3.5/rosetta_database/'] + relaxFlags
         logger.debug("executing rosetta with:{}".format(" ".join(rosetta_cmd)))
         subprocess.call(rosetta_cmd,
-            stdout=FNULL, stderr=subprocess.STDOUT)
+                        stdout=FNULL, stderr=subprocess.STDOUT)
 
-def rescore_prediction(input_path,output_paths, protein_ID, logger):
 
+def rescore_prediction(input_path, output_paths, protein_ID, logger):
     logger.info("starting: rescore all predictions")
 
-    native_file = "{}.pdb".format( join(input_path, protein_ID) )
+    native_file = "{}.pdb".format(join(input_path, protein_ID))
 
     for output_dir in output_paths:
-        pdbfiles = [ join(output_dir, f) for f in os.listdir(output_dir)
-                     if isfile(join(output_dir, f)) and f.endswith('.pdb')]
+        pdbfiles = [join(output_dir, f) for f in os.listdir(output_dir)
+                    if isfile(join(output_dir, f)) and f.endswith('.pdb')]
         pdbfiles.sort()
 
         logger.debug("rescoring {}".format(output_dir))
         FNULL = open(os.devnull, 'w')
         subprocess.call(['/home/lassner/rosetta-3.5/rosetta_source/bin/score.linuxgccrelease',
-            '-in:file:s']+pdbfiles+[
-            '-in:file:fullatom',
-            '-out:file:scorefile', join(output_dir, 'scoreV2.fsc'), # TODO: hardcoded.
-            '-native', native_file,
-            '-database', '/home/lassner/rosetta-3.5/rosetta_database/'],
-            stdout=FNULL, stderr=subprocess.STDOUT)
+                         '-in:file:s'] + pdbfiles + [
+                            '-in:file:fullatom',
+                            '-out:file:scorefile', join(output_dir, 'scoreV2.fsc'),  # TODO: hardcoded.
+                            '-native', native_file,
+                            '-database', '/home/lassner/rosetta-3.5/rosetta_database/'],
+                        stdout=FNULL, stderr=subprocess.STDOUT)
+
 
 def plot():
     # STEP 3: Compare scores and fulfillments of constraints
     logging.info("starting STEP 3: compare scores and fulfillments of constraints")
 
-    dirIds= ['native', 'group0baseline', 'group0natives', 'group0nativesTrueConstraints']
+    dirIds = ['native', 'group0baseline', 'group0natives', 'group0nativesTrueConstraints']
     dirs = []
     for i in range(numGroups):
-        dirIds.append('group'+str(i)+"individual")
-        dirIds.append('group'+str(i)+"random")
-        dirIds.append('group'+str(i)+"sizeCap")
+        dirIds.append('group' + str(i) + "individual")
+        dirIds.append('group' + str(i) + "random")
+        dirIds.append('group' + str(i) + "sizeCap")
     for d in dirIds:
-        if d in os.listdir(outputPath) and isdir(join(outputPath,d)):
+        if d in os.listdir(outputPath) and isdir(join(outputPath, d)):
             dirs.append(d)
-
 
     scores = []
     gdts = []
     for d in dirs:
         # TODO: hardcoded.
-        data = np.genfromtxt(join(outputPath,d)+'/scoreV3.fsc', dtype=None, usecols=(1,22), skip_header=1)
-        scores.append(data[:,0])
-        gdts.append(data[:,1])
-
+        data = np.genfromtxt(join(outputPath, d) + '/scoreV3.fsc', dtype=None, usecols=(1, 22), skip_header=1)
+        scores.append(data[:, 0])
+        gdts.append(data[:, 1])
 
     scores = np.array(scores)
     gdts = np.array(gdts)
 
-    def groupBoxplots(data, ylabel, groupnames, filename=None, ylim = None):
+    def groupBoxplots(data, ylabel, groupnames, filename=None, ylim=None):
         fig, ax1 = plt.subplots()
         ax1.boxplot(data.T)
         xtickNames = plt.setp(ax1, xticklabels=groupnames)
@@ -251,23 +252,23 @@ def plot():
         if filename is None:
             plt.show()
         else:
-            plt.savefig(join("plots",args.proteinID,filename+".png"), bbox_inches='tight')
+            plt.savefig(join("plots", args.proteinID, filename + ".png"), bbox_inches='tight')
 
     def gdtScoreScatterplot(gdts, scores, gdtsBaseline=None, scoresBaseline=None, filename=None):
         plt.figure()
         plt.title("{} {}".format(args.proteinID, filename))
         plt.scatter(gdts, scores)
-        if scoresBaseline != None and gdtsBaseline!=None:
+        if scoresBaseline != None and gdtsBaseline != None:
             plt.scatter(gdtsBaseline, scoresBaseline, c='grey', alpha=0.5)
         plt.xlabel('gdtmm')
-        plt.xlim((0,1))
+        plt.xlim((0, 1))
         plt.ylabel('score')
         if filename is None:
             plt.show()
         else:
-            plt.savefig(join("plots",args.proteinID, "scatter",filename+".png"), bbox_inches='tight')
+            plt.savefig(join("plots", args.proteinID, "scatter", filename + ".png"), bbox_inches='tight')
 
-    for group,label in enumerate(dirs):
+    for group, label in enumerate(dirs):
         if "individual" in label:
             gdtScoreScatterplot(gdts[group], scores[group],
                                 gdts[1], scores[1], label)
@@ -280,7 +281,7 @@ def plot():
     randomGroupsLabels = []
     individualLabels = []
 
-    for k,label in enumerate(dirs):
+    for k, label in enumerate(dirs):
         if "individual" in label:
             individualGroupsIdx.append(k)
             individualLabels.append(label)
@@ -291,7 +292,7 @@ def plot():
             sizeCapGroupsIdx.append(k)
             sizeCapGroupsLabels.append(label)
         else:
-            #add baseDirs to each of the groups
+            # add baseDirs to each of the groups
             individualGroupsIdx.append(k)
             individualLabels.append(label)
             randomGroupsIdx.append(k)
@@ -299,69 +300,72 @@ def plot():
             sizeCapGroupsIdx.append(k)
             sizeCapGroupsLabels.append(label)
 
-
     groupBoxplots(scores[individualGroupsIdx], "rosetta energy score", individualLabels, "scoresIndividual")
     groupBoxplots(scores[randomGroupsIdx], "rosetta energy score", randomGroupsLabels, "scoresRandom")
     groupBoxplots(scores[sizeCapGroupsIdx], "rosetta energy score", sizeCapGroupsLabels, "scoresSizeCap")
 
-    groupBoxplots(gdts[individualGroupsIdx], "gdt", individualLabels, "gdtsIndividual",ylim=(0,1))
-    groupBoxplots(gdts[randomGroupsIdx], "gdt", randomGroupsLabels, "gdtsRandom",ylim=(0,1))
-    groupBoxplots(gdts[sizeCapGroupsIdx], "gdt", sizeCapGroupsLabels, "gdtsSizeCap",ylim=(0,1))
+    groupBoxplots(gdts[individualGroupsIdx], "gdt", individualLabels, "gdtsIndividual", ylim=(0, 1))
+    groupBoxplots(gdts[randomGroupsIdx], "gdt", randomGroupsLabels, "gdtsRandom", ylim=(0, 1))
+    groupBoxplots(gdts[sizeCapGroupsIdx], "gdt", sizeCapGroupsLabels, "gdtsSizeCap", ylim=(0, 1))
 
-    prefix, suffix = constraintFile.rsplit('/',1)[1].rsplit('.',1)
-    subConstraintsFilename = "{}_exp.{}".format(prefix,suffix)
+    prefix, suffix = constraintFile.rsplit('/', 1)[1].rsplit('.', 1)
+    subConstraintsFilename = "{}_exp.{}".format(prefix, suffix)
 
     enabledConstraints = np.zeros(scores.shape)
     nativeConstraints = np.zeros(scores.shape)
-    for group,inputDir in enumerate(dirs):
-        files = [join(outputPath,inputDir,f) for f in os.listdir(join(outputPath,inputDir)) if isfile(join(outputPath,inputDir,f)) and f.endswith('.pdb') ]
-        for decoy,f in enumerate(files):
-            constraintsFilepath = join(join(outputPath,inputDir),subConstraintsFilename)
+    for group, inputDir in enumerate(dirs):
+        files = [join(outputPath, inputDir, f) for f in os.listdir(join(outputPath, inputDir)) if
+                 isfile(join(outputPath, inputDir, f)) and f.endswith('.pdb')]
+        for decoy, f in enumerate(files):
+            constraintsFilepath = join(join(outputPath, inputDir), subConstraintsFilename)
             constraintsEnabled = checkConstraints.constraintsEnabledInDecoy(f, constraintsFilepath)
             constraintsNative = checkConstraints.nativeConstraintsInDecoy(f, constraintsFilepath)
-            enabledConstraints[group,decoy] = float(np.sum(constraintsEnabled))/len(constraintsEnabled)
-            nativeConstraints[group,decoy] = float(np.sum(constraintsNative))/len(constraintsNative)
+            enabledConstraints[group, decoy] = float(np.sum(constraintsEnabled)) / len(constraintsEnabled)
+            nativeConstraints[group, decoy] = float(np.sum(constraintsNative)) / len(constraintsNative)
 
-    groupBoxplots(enabledConstraints[individualGroupsIdx], "ratio constraints enabled", individualLabels, "enabledConstraintsIndividual",ylim=(0,1))
-    groupBoxplots(enabledConstraints[randomGroupsIdx], "ratio constraints enabled", randomGroupsLabels, "enabledConstraintsRandom",ylim=(0,1))
-    groupBoxplots(enabledConstraints[sizeCapGroupsIdx], "ratio constraints enabled", sizeCapGroupsLabels, "enabledConstraintsSizeCap",ylim=(0,1))
+    groupBoxplots(enabledConstraints[individualGroupsIdx], "ratio constraints enabled", individualLabels,
+                  "enabledConstraintsIndividual", ylim=(0, 1))
+    groupBoxplots(enabledConstraints[randomGroupsIdx], "ratio constraints enabled", randomGroupsLabels,
+                  "enabledConstraintsRandom", ylim=(0, 1))
+    groupBoxplots(enabledConstraints[sizeCapGroupsIdx], "ratio constraints enabled", sizeCapGroupsLabels,
+                  "enabledConstraintsSizeCap", ylim=(0, 1))
 
     # scatterplot enabled constraints vs native constraints
     fig, ax = plt.subplots()
     ax.set_aspect('equal')
-    ax.scatter(enabledConstraints.flatten(),nativeConstraints.flatten())
+    ax.scatter(enabledConstraints.flatten(), nativeConstraints.flatten())
     ax.set_xlabel("enabled constraints")
     ax.set_ylabel("native constraints")
-    ax.set_xlim(0,1)
-    ax.set_ylim(0,1)
-    plt.savefig(join("plots",args.proteinID,"enabledVsNative.png"), bbox_inches='tight')
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    plt.savefig(join("plots", args.proteinID, "enabledVsNative.png"), bbox_inches='tight')
 
     # STEP 3.5: get contact map
-    def contactMap(contactMatrix, contactMatrixNative, filename = None):
+    def contactMap(contactMatrix, contactMatrixNative, filename=None):
         truePositiveMatrix = np.logical_and(
-                                contactMatrix,
-                                contactMatrixNative)
+            contactMatrix,
+            contactMatrixNative)
         falsePositiveMatrix = np.logical_and(
-                                contactMatrix,
-                                np.logical_not(contactMatrixNative))
+            contactMatrix,
+            np.logical_not(contactMatrixNative))
         truePositive = np.sum(truePositiveMatrix)
         falsePositive = np.sum(falsePositiveMatrix)
         falseNegatives = np.sum(np.logical_and(
-                    np.logical_not(contactMatrix),
-                    contactMatrixNative))
+            np.logical_not(contactMatrix),
+            contactMatrixNative))
 
-        precision = truePositive/(truePositive+falsePositive)
-        recall = truePositive/(truePositive+falseNegatives)
+        precision = truePositive / (truePositive + falsePositive)
+        recall = truePositive / (truePositive + falseNegatives)
 
         plt.figure()
-        plt.scatter(*np.where(contactMatrixNative+contactMatrixNative.T), c='g', alpha=0.2)
+        plt.scatter(*np.where(contactMatrixNative + contactMatrixNative.T), c='g', alpha=0.2)
         plt.scatter(*np.where(truePositiveMatrix.T), c='b', alpha=0.5)
         plt.scatter(*np.where(falsePositiveMatrix), c='r', alpha=0.5)
         plt.title("contact map")
         plt.xlabel("constraint position on backbone")
         plt.ylabel("constraint position on backbone")
 
-        plt.text(5, 10, "precision:{:.2%}\nrecall:{:.2%}".format(precision,recall))
+        plt.text(5, 10, "precision:{:.2%}\nrecall:{:.2%}".format(precision, recall))
 
         # Set the ticks
         n = contactMatrix.shape[0]
@@ -375,45 +379,47 @@ def plot():
         if filename is None:
             plt.show()
         else:
-            plt.savefig(join("plots",args.proteinID,"contactmaps", filename+".png"), bbox_inches='tight')
+            plt.savefig(join("plots", args.proteinID, "contactmaps", filename + ".png"), bbox_inches='tight')
 
     # STEP 3.6: get contact map for groups
-    def contactMapGroups(adjacency, adjacency_nat, filename = None):
+    def contactMapGroups(adjacency, adjacency_nat, filename=None):
         plt.figure()
-        contactMatrixNative = adjacency_nat>=0
-        plt.scatter(*np.where(contactMatrixNative+contactMatrixNative.T), c='g', alpha=0.2)
+        contactMatrixNative = adjacency_nat >= 0
+        plt.scatter(*np.where(contactMatrixNative + contactMatrixNative.T), c='g', alpha=0.2)
 
         def drawScatter(contactMatrix, contactMatrixNative, group, color='b'):
             truePositiveMatrix = np.logical_and(
-                                    contactMatrix,
-                                    contactMatrixNative)
+                contactMatrix,
+                contactMatrixNative)
             falsePositiveMatrix = np.logical_and(
-                                    contactMatrix,
-                                    np.logical_not(contactMatrixNative))
+                contactMatrix,
+                np.logical_not(contactMatrixNative))
             truePositive = np.sum(truePositiveMatrix)
             falsePositive = np.sum(falsePositiveMatrix)
             falseNegatives = np.sum(np.logical_and(
-                        np.logical_not(contactMatrix),
-                        contactMatrixNative))
+                np.logical_not(contactMatrix),
+                contactMatrixNative))
 
-            precision = truePositive/(truePositive+falsePositive)
-            recall = truePositive/(truePositive+falseNegatives)
+            precision = truePositive / (truePositive + falsePositive)
+            recall = truePositive / (truePositive + falseNegatives)
 
             # http://matplotlib.org/examples/pylab_examples/scatter_star_poly.html
             if color == 'k':
-                alpha=0.5
+                alpha = 0.5
             else:
-                alpha=1.0
-            tp=plt.scatter(*np.where(truePositiveMatrix.T), c=color, alpha=alpha, marker='s',label='TP-group{}'.format(group))
-            fp=plt.scatter(*np.where(falsePositiveMatrix), c=color, alpha=alpha, marker='^',label='FP-group{}'.format(group))
+                alpha = 1.0
+            tp = plt.scatter(*np.where(truePositiveMatrix.T), c=color, alpha=alpha, marker='s',
+                             label='TP-group{}'.format(group))
+            fp = plt.scatter(*np.where(falsePositiveMatrix), c=color, alpha=alpha, marker='^',
+                             label='FP-group{}'.format(group))
 
         plt.title("contact map")
         plt.xlabel("constraint position on backbone")
         plt.ylabel("constraint position on backbone")
 
-        colors=['r','g','b','y','c','m', 'k']
+        colors = ['r', 'g', 'b', 'y', 'c', 'm', 'k']
         for group, groupid in enumerate(unique):
-            drawScatter(adjacency==groupid, contactMatrixNative, group, color=colors[group])
+            drawScatter(adjacency == groupid, contactMatrixNative, group, color=colors[group])
 
         '''
         plt.legend(
@@ -435,22 +441,23 @@ def plot():
         if filename is None:
             plt.show()
         else:
-            plt.savefig(join("plots",args.proteinID,"contactmaps", filename+".png"), bbox_inches='tight')
+            plt.savefig(join("plots", args.proteinID, "contactmaps", filename + ".png"), bbox_inches='tight')
+
     contactMapGroups(adjacency, adjacency_nat, 'allGroups')
 
     for d in dirs:
         contactMatrix = np.zeros(adjacency.shape, dtype=bool)
         try:
-            constraintPositions = np.genfromtxt(join(outputPath, d, subConstraintsFilename), dtype=None, usecols=(2,4))
+            constraintPositions = np.genfromtxt(join(outputPath, d, subConstraintsFilename), dtype=None, usecols=(2, 4))
         except IOError as e:
             constraintPositions = np.array([])
 
         if len(constraintPositions.shape) != 2:
-            constraintPositions = constraintPositions[np.newaxis,:]
+            constraintPositions = constraintPositions[np.newaxis, :]
         if constraintPositions.shape[1] > 1:
-            constraintPositions -= 1 # shift, to let it start by 0 instead 1
-            contactMatrix[constraintPositions[:,0], constraintPositions[:,1]] = True
-            contactMap(contactMatrix, adjacency_nat>=0, d)
+            constraintPositions -= 1  # shift, to let it start by 0 instead 1
+            contactMatrix[constraintPositions[:, 0], constraintPositions[:, 1]] = True
+            contactMap(contactMatrix, adjacency_nat >= 0, d)
 
 
     def plotScoresAndEnabledConstraints(enabledConstraints, minScores):
@@ -464,7 +471,7 @@ def plot():
         ax1.plot(enabledConstraints, color="red")
         ax2 = ax1.twinx()
         ax2.plot(minScores, color="blue")
-        ax2.plot((0,len(minScores)-1),(baseline,baseline),"b--")
+        ax2.plot((0, len(minScores) - 1), (baseline, baseline), "b--")
 
         ax1.tick_params(axis='y', colors='red')
         ax2.tick_params(axis='y', colors='blue')
@@ -475,16 +482,15 @@ def plot():
 
         plt.show()
 
-    # TODO: this function fails at the moment anyway.
-    #plotScoresAndEnabledConstraints(enabledConstraints, minScores)
+        # TODO: this function fails at the moment anyway.
+        # plotScoresAndEnabledConstraints(enabledConstraints, minScores)
 
 
-    # STEP 4: Run predicition with combinations of promising groups
-    # TODO ^
+        # STEP 4: Run predicition with combinations of promising groups
+        # TODO ^
 
 
 def main(argv=None):
-
     # append argv to system argv if existing
     if argv is None:
         argv = sys.argv
@@ -512,20 +518,21 @@ def main(argv=None):
         for i, label in enumerate(subset_labels):
             # write file for every subset of constraints
             prediction_paths, subset_basefilename = write_constraint_subset_files(
-                    protein_output_path, constraint_filename,
-                    subset_graphs[i], subset_IDs[i], label, logger)
+                protein_output_path, constraint_filename,
+                subset_graphs[i], subset_IDs[i], label, logger)
             prediction_paths_all.extend(prediction_paths)
 
         protein_structure_prediction(
-                protein_input_path, prediction_paths_all, args.protein_ID,
-                subset_basefilename, logger, args.debug)
+            protein_input_path, prediction_paths_all, args.protein_ID,
+            subset_basefilename, logger, args.debug)
 
         rescore_prediction(protein_input_path, prediction_paths_all,
-                                                args.protein_ID, logger)
+                           args.protein_ID, logger)
 
     except KeyboardInterrupt:
         ### handle keyboard interrupt silently ###
         return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
