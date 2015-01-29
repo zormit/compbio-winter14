@@ -85,15 +85,24 @@ def generate_constraint_subsets(input_path, protein_ID, logger):
     constraintFile = checkConstraints.writeDistancesToConstraintFile(
                                 nativeFile, input_path, protein_ID, logger)
 
-    adjacency, counts, unique = constraintSubsets.generateSSContraintSubsets(
+    subset_graph_SS, counts, subset_IDs = constraintSubsets.generateSSContraintSubsets(
                                 secondaryStructure, constraintFile, logger)
 
-    #TODO: generate other subsets via parameters to this function.
-    #adjacencyRand = constraintSubsets.generateRandomGroups(sequenceLength,constraintFile,counts,unique)
-    #adjacency_nat = constraintSubsets.generateNativeContraints(constraintFile, sequenceLength)
+    subset_graph_rand = constraintSubsets.generateRandomGroups(sequenceLength,
+                                        constraintFile, counts, subset_IDs)
+    subset_graph_native = constraintSubsets.generateNativeContraints(constraintFile, sequenceLength)
+
+    subset_graph_all = np.zeros(subset_graph_native.shape, dtype=int)
+    subset_graph_baseline = subset_graph_all - 1
+
+    subset_IDs_all = [subset_IDs, subset_IDs, [0], [0], [0]]
+    subset_labels = ["secstruct", "random", "native", "all", "baseline"]
+    subset_graphs = [subset_graph_SS, subset_graph_rand,
+            subset_graph_native, subset_graph_all, subset_graph_baseline]
+
     logger.info("finished: generate constraint groups")
 
-    return constraintFile, adjacency, unique
+    return constraintFile, subset_graphs, subset_IDs_all, subset_labels
 
 
 def write_constraint_subset_files(output_path, constraint_filename,
@@ -204,18 +213,20 @@ def main(argv=None):
         protein_output_path = join(args.output_path, args.protein_ID)
 
         # generate constraint subsets based on secondary structure
-        constraint_filename, subset_graph, subset_IDs = (
+        constraint_filename, subset_graphs, subset_IDs, subset_labels = (
             generate_constraint_subsets(protein_input_path,
                                         args.protein_ID, logger))
 
-        # write file for every subset of constraints based on secondary structure
-        dir_prefix = "secstruct"
-        prediction_paths, subset_basefilename = write_constraint_subset_files(
-                protein_output_path, constraint_filename,
-                subset_graph, subset_IDs, dir_prefix, logger)
+        prediction_paths_all = []
+        for i, label in enumerate(subset_labels):
+            # write file for every subset of constraints
+            prediction_paths, subset_basefilename = write_constraint_subset_files(
+                    protein_output_path, constraint_filename,
+                    subset_graphs[i], subset_IDs[i], label, logger)
+            prediction_paths_all.extend(prediction_paths)
 
         protein_structure_prediction(
-                protein_input_path, prediction_paths, args.protein_ID,
+                protein_input_path, prediction_paths_all, args.protein_ID,
                 subset_basefilename, logger, args.debug)
 
     except KeyboardInterrupt:
@@ -226,23 +237,6 @@ if __name__ == "__main__":
     sys.exit(main())
 
 
-
-# Example Run for Rosetta native constraints only
-runRosetta(constraintFile, inputPath, outputPath, args.proteinID, 1, None, [0], adjacency_nat, "natives")
-
-# nativesTrueConstraints means, that the distances from the native are set as penalty
-runRosetta(constraintFile, inputPath, outputPath, args.proteinID, 1, None, [0], adjacency_nat, "nativesTrueConstraints")
-
-
-# Run for Rosetta Baseline:
-runRosetta(constraintFile, inputPath, outputPath, args.proteinID, 1, None, [0], np.zeros(adjacency.shape,dtype=int)-1, "baseline")
-
-# Run for Rosetta all groups of constraints individually
-runRosetta(constraintFile, inputPath, outputPath, args.proteinID, numGroups, None, unique, adjacency, "individual")
-
-runRosetta(constraintFile, inputPath, outputPath, args.proteinID, numGroups, None, unique, adjacencyRand, "random")
-
-runRosetta(constraintFile, inputPath, outputPath, args.proteinID, numGroups, 8, unique, adjacency, "sizeCap")
 
 # STEP 3: Compare scores and fulfillments of constraints
 logging.info("starting STEP 3: compare scores and fulfillments of constraints")
