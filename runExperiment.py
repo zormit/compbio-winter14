@@ -96,11 +96,8 @@ def generate_constraint_subsets(input_path, protein_ID, logger):
     return constraintFile, adjacency, unique
 
 
-def protein_structure_prediction(input_path, output_path, protein_ID,
-                constraint_filename, subset_graph, subset_IDs,
-                dir_prefix, logger, debug):
-
-    logger.info("starting: PSP for all constraint subsets")
+def write_constraint_subset_files(output_path, constraint_filename,
+                subset_graph, subset_IDs, dir_prefix, logger):
 
     constraint_residues = np.genfromtxt(constraint_filename,
                         dtype=None, usecols=(2,4))
@@ -113,16 +110,21 @@ def protein_structure_prediction(input_path, output_path, protein_ID,
     with open(constraint_filename) as constraint_file:
         constraints = np.array(constraint_file.readlines())
 
+    prefix, suffix = os.path.split(constraint_filename)[-1].rsplit('.',1)
+    subset_basefilename = "{}_subset.{}".format(prefix,suffix)
+
+    output_dirs = []
+
     for group, subset_ID in enumerate(subset_IDs):
 
         # create directory for results and constraint subset-file
         output_dir = join(output_path, '{}_{}'.format(dir_prefix, group))
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
+        output_dirs.append(output_dir)
 
         # copy subset to its own file. name generated from base constraint file
-        prefix, suffix = os.path.split(constraint_filename)[-1].rsplit('.',1)
-        subset_filename = join(output_dir, "{}_subset.{}".format(prefix,suffix))
+        subset_filename = join(output_dir, subset_basefilename)
         logger.debug("writing sub-constraints to:{}".format(subset_filename))
         with open(subset_filename, 'w') as subset:
             #TODO allow for changed weights
@@ -130,7 +132,14 @@ def protein_structure_prediction(input_path, output_path, protein_ID,
             subset.writelines(
                     constraints[subset_indices])
 
-        subset_size = len(subset_indices[0])
+    return output_dirs, subset_basefilename
+
+def protein_structure_prediction(input_path, output_paths, protein_ID,
+                                subset_basefilename, logger, debug):
+
+    logger.info("starting: PSP for all constraint subsets")
+
+    for output_dir in output_paths:
 
         if not debug:
             relaxFlags = ['-abinitio:relax',
@@ -148,14 +157,14 @@ def protein_structure_prediction(input_path, output_path, protein_ID,
         frag3File = "{}.200.3mers".format(filePrefix)
         frag9File = "{}.200.9mers".format(filePrefix)
         nativeFile = "{}.pdb".format(filePrefix)
+        subset_filename = join(output_dir, subset_basefilename)
 
         FNULL = open(os.devnull, 'w')
 
         ## Run Prediction
         #TODO: hardcoded path
-        logger.info(("starting rosetta-run for {}_{} "+
-                    "with {} constraints at {}").format(dir_prefix, group,
-                                        subset_size, strftime('%H:%M:%S')))
+        logger.info(("starting rosetta-run on {} at {}").format(
+                                    subset_filename, strftime('%H:%M:%S')))
         rosetta_cmd = ['/home/lassner/rosetta-3.5/rosetta_source/bin/AbinitioRelax.linuxgccrelease',
             '-in:file:fasta', sequenceFile,
             '-in:file:frag3', frag3File,
@@ -208,12 +217,15 @@ def main(argv=None):
             generate_constraint_subsets(protein_input_path,
                                         args.protein_ID, logger))
 
-        # predict structures for every subset of constraints base on secondary structure
+        # write file for every subset of constraints based on secondary structure
         dir_prefix = "secstruct"
+        prediction_paths, subset_basefilename = write_constraint_subset_files(
+                protein_output_path, constraint_filename,
+                subset_graph, subset_IDs, dir_prefix, logger)
+
         protein_structure_prediction(
-                protein_input_path, protein_output_path, args.protein_ID,
-                constraint_filename, subset_graph, subset_IDs,
-                dir_prefix, logger, args.debug)
+                protein_input_path, prediction_paths, args.protein_ID,
+                subset_basefilename, logger, args.debug)
 
     except KeyboardInterrupt:
         ### handle keyboard interrupt silently ###
