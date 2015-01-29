@@ -193,12 +193,13 @@ def protein_structure_prediction(input_path, output_paths, protein_ID,
 
 def rescore_prediction(input_path,output_paths, protein_ID, logger):
 
+    logger.info("starting: rescore all predictions")
+
     native_file = "{}.pdb".format( join(input_path, protein_ID) )
 
     for output_dir in output_paths:
         pdbfiles = [ join(output_dir, f) for f in os.listdir(output_dir)
                      if isfile(join(output_dir, f)) and f.endswith('.pdb')]
-        import ipdb; ipdb.set_trace()
         pdbfiles.sort()
 
         logger.debug("rescoring {}".format(output_dir))
