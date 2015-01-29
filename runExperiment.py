@@ -173,24 +173,15 @@ def protein_structure_prediction(input_path, output_paths, protein_ID,
             '-constraints:cst_file', subset_filename,
             '-out:nstruct', str(nStruct),
             '-out:pdb',
+            '-out:path', output_dir,
+            '-out:sf', join(output_dir, 'score.fsc'),
+            '-out:file:silent', join(output_dir, 'default.out'),
             '-mute core.io.database',
             '-database', '/home/lassner/rosetta-3.5/rosetta_database/']+relaxFlags
         logger.debug("executing rosetta with:{}".format(" ".join(rosetta_cmd)))
         subprocess.call(rosetta_cmd,
             stdout=FNULL, stderr=subprocess.STDOUT)
 
-        ## Copy Results
-        inputDir = os.getcwd()
-        #TODO: hardcoded file-matchers
-        files = [ f for f in os.listdir(inputDir) if isfile(join(inputDir,f)) ]
-        for f in files:
-            if f.endswith('.pdb') or f.endswith('score.fsc'):
-                shutil.move(join(inputDir,f),join(output_dir,f))
-
-            if f.endswith('default.out'):
-                os.remove(join(inputDir,f))
-        logger.debug("moved results to {}. finished a rosetta-run".format(output_dir))
-    logger.info("finished: PSP for all constraint subsets".format(output_dir))
 
 def main(argv=None):
 
