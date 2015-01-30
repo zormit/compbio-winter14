@@ -1,7 +1,6 @@
 from __future__ import division
 from pymol import cmd
 import numpy as np
-import pdb
 import os
 
 
@@ -134,8 +133,3 @@ def checkConstraints(realProteinFilename, decoyFilename, constraintsFilename, th
     recall = truePositive/(truePositive+falseNegatives)
 
     return precision, recall
-
-if __name__ == "__main__":
-    decoy = "/home/neeb/Data/input-bounded/2h3jA/2h3jA.pdb"
-    constraints = "/home/neeb/Data/input-bounded/2h3jA/2h3jA_contact_constraints.txt"
-    print constraintsEnabledInDecoy(decoy, constraints)

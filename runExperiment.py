@@ -2,18 +2,10 @@ from __future__ import division
 from __future__ import print_function
 import sys
 import os
-from os.path import isfile, isdir, join
-import shutil
-import pdb
+from os.path import isfile, join
 import subprocess
-import numpy as np
-import random
 import argparse
-import matplotlib as mpl
-
-mpl.use('Agg')
-# http://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server
-import matplotlib.pylab as plt
+import numpy as np
 import logging
 from time import strftime
 
