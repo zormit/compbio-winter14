@@ -268,9 +268,9 @@ def plot(output_dirs_grouped):
 
     baseline = 'combined_baseline'
     for target in ['secstruct', 'random']:
-        partial_scores = np.r_[scores[target], scores[baseline]]
-        partial_gdts = np.r_[gdts[target], gdts[baseline]]
-        partial_subset_names = subset_names[target] + subset_names[baseline]
+        partial_scores = np.r_[scores[baseline], scores[target]]
+        partial_gdts = np.r_[gdts[baseline], gdts[target]]
+        partial_subset_names = subset_names[baseline] + subset_names[target]
 
         plotting.groupBoxplots(partial_scores, "rosetta energy score",
                                partial_subset_names, "scores_" + target)
