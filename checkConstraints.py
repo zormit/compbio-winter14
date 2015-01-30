@@ -7,14 +7,23 @@ import os
 
 def nativeConstraintsInDecoy(decoyFilename, constraintsFilename):
     try:
-        constraints = np.genfromtxt(constraintsFilename, dtype=None, usecols=(6,8))
+        constraints = np.genfromtxt(constraintsFilename, dtype=None, usecols=(6, 7, 11))
     except IOError as e:
+    # no constraints and old numpy -> circumvent with "one constraint disabled"
         return [False]
 
-    if constraints.ndim == 0:
-        constraints = constraints.reshape(1)
+    # no constraints -> circumvent with "one constraint disabled"
+    if constraints.shape[0] == 0:
+        return [False]
 
-    return np.abs(constraints[:,0]-constraints[:,1])<1.5
+    lowerBounds = constraints[:, 0]
+    upperBounds = constraints[:, 1]
+    nativeDistances = constraints[:, 2]
+
+    constraintsEnabled = np.logical_and(lowerBounds <= nativeDistances,
+                                        nativeDistances <= upperBounds)
+
+    return constraintsEnabled
 
 
 
@@ -26,10 +35,12 @@ def constraintsEnabledInDecoy(decoyFilename, constraintsFilename, threshold = 8.
     try:
         constraints = np.genfromtxt(constraintsFilename, dtype=None, usecols=(1,2,3,4,6,7))
     except IOError as e:
+    # no constraints and old numpy -> circumvent with "one constraint disabled"
         return [False]
 
-    if constraints.ndim == 0:
-        constraints = constraints.reshape(1)
+    # no constraints -> circumvent with "one constraint disabled"
+    if constraints.shape[0] == 0:
+        return [False]
 
     lowerBounds = []
     upperBounds = []

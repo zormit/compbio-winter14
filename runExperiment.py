@@ -277,27 +277,33 @@ def plot(output_dirs_grouped):
         plotting.groupBoxplots(partial_gdts, "gdt",
                                partial_subset_names, "gdts_" + target, ylim=(0, 1))
 
-    prefix, suffix = constraintFile.rsplit('/', 1)[1].rsplit('.', 1)
-    subConstraintsFilename = "{}_exp.{}".format(prefix, suffix)
+    # TODO: hardcoded.
+    subConstraintsFilename = "2krkA_contact_constraints_withNativeDistances_subset.txt"
 
-    enabledConstraints = np.zeros(scores.shape)
-    nativeConstraints = np.zeros(scores.shape)
-    for group, inputDir in enumerate(dirs):
-        files = [join(outputPath, inputDir, f) for f in os.listdir(join(outputPath, inputDir)) if
-                 isfile(join(outputPath, inputDir, f)) and f.endswith('.pdb')]
-        for decoy, f in enumerate(files):
-            constraintsFilepath = join(join(outputPath, inputDir), subConstraintsFilename)
-            constraintsEnabled = checkConstraints.constraintsEnabledInDecoy(f, constraintsFilepath)
-            constraintsNative = checkConstraints.nativeConstraintsInDecoy(f, constraintsFilepath)
-            enabledConstraints[group, decoy] = float(np.sum(constraintsEnabled)) / len(constraintsEnabled)
-            nativeConstraints[group, decoy] = float(np.sum(constraintsNative)) / len(constraintsNative)
+    enabledConstraints = {}
+    nativeConstraints = {}
+    for group in output_dirs_grouped:
+        enabledConstraints[group] = np.zeros(scores[group].shape)
+        nativeConstraints[group] = np.zeros(scores[group].shape)
+        for i, output_dir in enumerate(output_dirs_grouped[group]):
+            pdbfiles = [join(output_dir, f) for f in os.listdir(output_dir)
+                        if isfile(join(output_dir, f)) and f.endswith('.pdb')]
+            for decoy, f in enumerate(pdbfiles):
+                constraintsFilepath = join(output_dir, subConstraintsFilename)
+                constraintsEnabled = checkConstraints.constraintsEnabledInDecoy(f, constraintsFilepath)
+                constraintsNative = checkConstraints.nativeConstraintsInDecoy(f, constraintsFilepath)
+                enabledConstraints[group][i, decoy] = float(np.sum(constraintsEnabled)) / len(constraintsEnabled)
+                nativeConstraints[group][i, decoy] = float(np.sum(constraintsNative)) / len(constraintsNative)
 
-    groupBoxplots(enabledConstraints[individualGroupsIdx], "ratio constraints enabled", individualLabels,
-                  "enabledConstraintsIndividual", ylim=(0, 1))
-    groupBoxplots(enabledConstraints[randomGroupsIdx], "ratio constraints enabled", randomGroupsLabels,
-                  "enabledConstraintsRandom", ylim=(0, 1))
-    groupBoxplots(enabledConstraints[sizeCapGroupsIdx], "ratio constraints enabled", sizeCapGroupsLabels,
-                  "enabledConstraintsSizeCap", ylim=(0, 1))
+    baseline = 'native'
+    for target in ['secstruct', 'random']:
+        partial_enabledConstraints = np.r_[enabledConstraints[baseline],
+                                           enabledConstraints[target]]
+        partial_subset_names = subset_names[baseline] + subset_names[target]
+        plotting.groupBoxplots(partial_enabledConstraints,
+                               "ratio constraints fulfilled", partial_subset_names,
+                               "constraints_fulfilled_" + target, ylim=(0, 1))
+
 
     # scatterplot enabled constraints vs native constraints
     fig, ax = plt.subplots()
