@@ -4,9 +4,9 @@ import numpy as np
 import os
 
 
-def nativeConstraintsInDecoy(decoyFilename, constraintsFilename):
+def native_constraints_subset(constraints_filename):
     try:
-        constraints = np.genfromtxt(constraintsFilename, dtype=None, usecols=(6, 7, 11))
+        constraints = np.genfromtxt(constraints_filename, dtype=None, usecols=(6, 7, 11))
     except IOError as e:
         # no constraints and old numpy -> circumvent with "one constraint disabled"
         return [False]
@@ -15,14 +15,14 @@ def nativeConstraintsInDecoy(decoyFilename, constraintsFilename):
     if constraints.shape[0] == 0:
         return [False]
 
-    lowerBounds = constraints[:, 0]
-    upperBounds = constraints[:, 1]
-    nativeDistances = constraints[:, 2]
+    lower_bounds = constraints[:, 0]
+    upper_bounds = constraints[:, 1]
+    native_distances = constraints[:, 2]
 
-    constraintsEnabled = np.logical_and(lowerBounds <= nativeDistances,
-                                        nativeDistances <= upperBounds)
+    fulfilled_constraints = np.logical_and(lower_bounds <= native_distances,
+                                           native_distances <= upper_bounds)
 
-    return constraintsEnabled
+    return fulfilled_constraints
 
 
 

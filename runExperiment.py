@@ -269,33 +269,36 @@ def plot(output_dirs_grouped):
     # TODO: hardcoded.
     subConstraintsFilename = "2krkA_contact_constraints_withNativeDistances_subset.txt"
 
-    enabledConstraints = {}
-    nativeConstraints = {}
+    ratio_fulfilled_constraints = {}
+    ratio_native_constraints = {}
     for group in output_dirs_grouped:
-        enabledConstraints[group] = np.zeros(scores[group].shape)
-        nativeConstraints[group] = np.zeros(scores[group].shape)
+        ratio_fulfilled_constraints[group] = np.zeros(scores[group].shape)
+        ratio_native_constraints[group] = np.zeros(scores[group].shape)
         for i, output_dir in enumerate(output_dirs_grouped[group]):
+            constraints_filename = join(output_dir, subConstraintsFilename)
+
+            native_constraints_subset = checkConstraints.native_constraints_subset(constraints_filename)
+            ratio_native_constraints_subset = float(np.sum(native_constraints_subset)) / len(native_constraints_subset)
+            ratio_native_constraints[group][i, :] = ratio_native_constraints_subset
+
             pdbfiles = [join(output_dir, f) for f in os.listdir(output_dir)
                         if isfile(join(output_dir, f)) and f.endswith('.pdb')]
             for decoy, f in enumerate(pdbfiles):
-                constraintsFilepath = join(output_dir, subConstraintsFilename)
-                constraintsEnabled = checkConstraints.constraintsEnabledInDecoy(f, constraintsFilepath)
-                constraintsNative = checkConstraints.nativeConstraintsInDecoy(f, constraintsFilepath)
-                enabledConstraints[group][i, decoy] = float(np.sum(constraintsEnabled)) / len(constraintsEnabled)
-                nativeConstraints[group][i, decoy] = float(np.sum(constraintsNative)) / len(constraintsNative)
+                fulfilled_constraints_decoy = checkConstraints.constraintsEnabledInDecoy(f, constraints_filename)
+                ratio_fulfilled_constraints[group][i, decoy] = float(np.sum(fulfilled_constraints_decoy)) / len(fulfilled_constraints_decoy)
 
     baseline = 'native'
     for target in ['secstruct', 'random']:
-        partial_enabledConstraints = np.r_[enabledConstraints[baseline],
-                                           enabledConstraints[target]]
+        partial_enabledConstraints = np.r_[ratio_fulfilled_constraints[baseline],
+                                           ratio_fulfilled_constraints[target]]
         partial_subset_names = subset_names[baseline] + subset_names[target]
         plotting.groupBoxplots(partial_enabledConstraints,
                                "ratio constraints fulfilled", partial_subset_names,
                                "constraints_fulfilled_" + target, ylim=(0, 1))
 
         # scatterplot enabled constraints vs native constraints
-        plotting.enabled_native_scatterplot(enabledConstraints[target],
-                                            nativeConstraints[target], "enabledVsNative_" + target)
+        plotting.enabled_native_scatterplot(ratio_fulfilled_constraints[target],
+                                            ratio_native_constraints[target], "enabledVsNative_" + target)
 
         # STEP 3.5: get contact map
 def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grouped):
