@@ -216,71 +216,55 @@ def rescore_prediction(input_path, output_paths, protein_ID, logger):
                         stdout=FNULL, stderr=subprocess.STDOUT)
 
 
-def plot():
+def plot(output_dirs_grouped):
     # STEP 3: Compare scores and fulfillments of constraints
     logging.info("starting STEP 3: compare scores and fulfillments of constraints")
 
-    dirIds = ['native', 'group0baseline', 'group0natives', 'group0nativesTrueConstraints']
-    dirs = []
-    for i in range(numGroups):
-        dirIds.append('group' + str(i) + "individual")
-        dirIds.append('group' + str(i) + "random")
-        dirIds.append('group' + str(i) + "sizeCap")
-    for d in dirIds:
-        if d in os.listdir(outputPath) and isdir(join(outputPath, d)):
-            dirs.append(d)
+    scores = {}
+    gdts = {}
+    subset_names = {}
 
-    scores = []
-    gdts = []
-    for d in dirs:
-        # TODO: hardcoded.
-        data = np.genfromtxt(join(outputPath, d) + '/scoreV3.fsc', dtype=None, usecols=(1, 22), skip_header=1)
-        scores.append(data[:, 0])
-        gdts.append(data[:, 1])
+    for group in output_dirs_grouped:
+        scores[group] = []
+        gdts[group] = []
+        subset_names[group] = []
 
-    scores = np.array(scores)
-    gdts = np.array(gdts)
+        for output_dir in output_dirs_grouped[group]:
+            # TODO: hardcoded.
+            data = np.genfromtxt(join(output_dir, 'scoreV2.fsc'), dtype=None, usecols=(1, 22), skip_header=1)
+            scores[group].append(data[:, 0])
+            gdts[group].append(data[:, 1])
 
+            subset_names[group].append(os.path.basename(output_dir))
 
-    for group, label in enumerate(dirs):
-        if "individual" in label:
-            gdtScoreScatterplot(gdts[group], scores[group],
-                                gdts[1], scores[1], label)
+        scores[group] = np.array(scores[group])
+        gdts[group] = np.array(gdts[group])
 
-    sizeCapGroupsIdx = []
-    randomGroupsIdx = []
-    individualGroupsIdx = []
+    target = 'secstruct'
+    baseline = 'baseline'  # could also be 'all' or 'native'
 
-    sizeCapGroupsLabels = []
-    randomGroupsLabels = []
-    individualLabels = []
+    for i, name in enumerate(subset_names[target]):
+        plotting.gdtScoreScatterplot(gdts[target][i], scores[target][i],
+                                     gdts[baseline][0], scores[baseline][0],
+                                     name)
 
-    for k, label in enumerate(dirs):
-        if "individual" in label:
-            individualGroupsIdx.append(k)
-            individualLabels.append(label)
-        elif "random" in label:
-            randomGroupsIdx.append(k)
-            randomGroupsLabels.append(label)
-        elif "sizeCap" in label:
-            sizeCapGroupsIdx.append(k)
-            sizeCapGroupsLabels.append(label)
-        else:
-            # add baseDirs to each of the groups
-            individualGroupsIdx.append(k)
-            individualLabels.append(label)
-            randomGroupsIdx.append(k)
-            randomGroupsLabels.append(label)
-            sizeCapGroupsIdx.append(k)
-            sizeCapGroupsLabels.append(label)
+    # individually selected baseline
+    scores['combined_baseline'] = np.r_[scores['baseline'], scores['native']]
 
-    groupBoxplots(scores[individualGroupsIdx], "rosetta energy score", individualLabels, "scoresIndividual")
-    groupBoxplots(scores[randomGroupsIdx], "rosetta energy score", randomGroupsLabels, "scoresRandom")
-    groupBoxplots(scores[sizeCapGroupsIdx], "rosetta energy score", sizeCapGroupsLabels, "scoresSizeCap")
+    gdts['combined_baseline'] = np.r_[gdts['baseline'], gdts['native']]
+    subset_names['combined_baseline'] = (subset_names['baseline'] +
+                                         subset_names['native'])
 
-    groupBoxplots(gdts[individualGroupsIdx], "gdt", individualLabels, "gdtsIndividual", ylim=(0, 1))
-    groupBoxplots(gdts[randomGroupsIdx], "gdt", randomGroupsLabels, "gdtsRandom", ylim=(0, 1))
-    groupBoxplots(gdts[sizeCapGroupsIdx], "gdt", sizeCapGroupsLabels, "gdtsSizeCap", ylim=(0, 1))
+    baseline = 'combined_baseline'
+    for target in ['secstruct', 'random']:
+        partial_scores = np.r_[scores[target], scores[baseline]]
+        partial_gdts = np.r_[gdts[target], gdts[baseline]]
+        partial_subset_names = subset_names[target] + subset_names[baseline]
+
+        plotting.groupBoxplots(partial_scores, "rosetta energy score",
+                               partial_subset_names, "scores_" + target)
+        plotting.groupBoxplots(partial_gdts, "gdt",
+                               partial_subset_names, "gdts_" + target, ylim=(0, 1))
 
     prefix, suffix = constraintFile.rsplit('/', 1)[1].rsplit('.', 1)
     subConstraintsFilename = "{}_exp.{}".format(prefix, suffix)
@@ -364,13 +348,16 @@ def main(argv=None):
             generate_constraint_subsets(protein_input_path,
                                         args.protein_ID, logger))
 
-        prediction_paths_all = []
+        prediction_paths_grouped = {}
         for i, label in enumerate(subset_labels):
             # write file for every subset of constraints
             prediction_paths, subset_basefilename = write_constraint_subset_files(
                 protein_output_path, constraint_filename,
                 subset_graphs[i], subset_IDs[i], label, logger)
-            prediction_paths_all.extend(prediction_paths)
+            prediction_paths_grouped[label] = prediction_paths
+
+        # reduce grouped paths to a consecutive list
+        prediction_paths_all = sum(prediction_paths_grouped.values(), [])
 
         protein_structure_prediction(
             protein_input_path, prediction_paths_all, args.protein_ID,
@@ -378,6 +365,8 @@ def main(argv=None):
 
         rescore_prediction(protein_input_path, prediction_paths_all,
                            args.protein_ID, logger)
+
+        plot(prediction_paths_grouped)
 
     except KeyboardInterrupt:
         ### handle keyboard interrupt silently ###
