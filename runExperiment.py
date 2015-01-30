@@ -201,17 +201,17 @@ def rescore_prediction(input_path, output_paths, protein_ID, logger):
         pdbfiles.sort()
 
         logger.debug("rescoring {}".format(output_dir))
-        FNULL = open(os.devnull, 'w')
+
         rosetta_score = '/home/lassner/rosetta-3.5/rosetta_source/bin/score.linuxgccrelease'
         scoring_cmd = [rosetta_score,
                        '-in:file:s'] + pdbfiles + [
-                          '-in:file:fullatom',
-                          '-out:file:scorefile', join(output_dir, 'scoreV2.fsc'),  # TODO: hardcoded.
-                          '-native', native_file,
-                          '-database', '/home/lassner/rosetta-3.5/rosetta_database/']
+                       '-in:file:fullatom',
+                       '-out:file:scorefile', join(output_dir, 'scoreV2.fsc'),  # TODO: hardcoded.
+                       '-native', native_file,
+                       '-database', '/home/lassner/rosetta-3.5/rosetta_database/']
         try:
-            subprocess.call(scoring_cmd,
-                            stdout=FNULL, stderr=subprocess.STDOUT)
+            subprocess.call(scoring_cmd, stdout=open(os.devnull, 'w'),
+                            stderr=subprocess.STDOUT)
         except OSError:
             logger.exception("error calling rosetta. skipping.")
             break
