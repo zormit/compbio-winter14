@@ -6,7 +6,8 @@ mpl.use('Agg')
 import matplotlib.pylab as plt
 import numpy as np
 
-plot_dir = './plots/2krkA'
+# if not overwritten by config, this is used
+plot_dir = './plots/'
 
 
 def subset_boxplots(data, ylabel, groupnames, filename=None, ylim=None):

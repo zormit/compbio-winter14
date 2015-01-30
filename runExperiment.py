@@ -26,8 +26,6 @@ import plotting
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('config_filename', help='path to config')
-    parser.add_argument('input_path', help='path to input directory')
-    parser.add_argument('output_path', help='path to output directory')
     parser.add_argument('protein_ID',
                         help='ID of protein (has to correspond with path&files)')
     parser.add_argument('-d', '--debug', action='store_true',
@@ -351,9 +349,10 @@ def main(argv=None):
         logger = setup_logger(args)
         logger.debug("start program with the following args: {}".format(args))
 
-        # append protein ID to both paths
-        protein_input_path = join(args.input_path, args.protein_ID)
-        protein_output_path = join(args.output_path, args.protein_ID)
+        # append protein ID to paths
+        protein_input_path = join(config.get('dir', 'input'), args.protein_ID)
+        protein_output_path = join(config.get('dir', 'output'), args.protein_ID)
+        plot_dir = join(config.get('dir', 'plot'), args.protein_ID)
 
         # generate constraint subsets based on secondary structure
         constraint_filename, subset_graphs, subset_IDs, subset_labels = (
@@ -378,6 +377,7 @@ def main(argv=None):
         rescore_prediction(protein_input_path, prediction_paths_all,
                            args.protein_ID, logger, config)
 
+        plotting.plot_dir = plot_dir
         plot(prediction_paths_grouped, config)
         plot_contact_maps(subset_graphs, subset_labels, subset_IDs,
                           prediction_paths_grouped, config)
