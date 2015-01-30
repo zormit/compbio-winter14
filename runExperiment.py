@@ -244,7 +244,7 @@ def plot(output_dirs_grouped):
     target = 'secstruct'
     baseline = 'baseline'  # could also be 'all' or 'native'
     for i, name in enumerate(subset_names[target]):
-        plotting.gdtScoreScatterplot(gdts[target][i], scores[target][i],
+        plotting.gdt_score_scatter(gdts[target][i], scores[target][i],
                                      gdts[baseline][0], scores[baseline][0],
                                      name)
 
@@ -261,9 +261,9 @@ def plot(output_dirs_grouped):
         partial_gdts = np.r_[gdts[baseline], gdts[target]]
         partial_subset_names = subset_names[baseline] + subset_names[target]
 
-        plotting.groupBoxplots(partial_scores, "rosetta energy score",
+        plotting.subset_boxplots(partial_scores, "rosetta energy score",
                                partial_subset_names, "scores_" + target)
-        plotting.groupBoxplots(partial_gdts, "gdt",
+        plotting.subset_boxplots(partial_gdts, "gdt",
                                partial_subset_names, "gdts_" + target, ylim=(0, 1))
 
     # TODO: hardcoded.
@@ -292,20 +292,20 @@ def plot(output_dirs_grouped):
         ratio_fulfilled_constraints_merged = np.r_[ratio_fulfilled_constraints[baseline],
                                            ratio_fulfilled_constraints[target]]
         partial_subset_names = subset_names[baseline] + subset_names[target]
-        plotting.groupBoxplots(ratio_fulfilled_constraints_merged,
+        plotting.subset_boxplots(ratio_fulfilled_constraints_merged,
                                "ratio constraints fulfilled", partial_subset_names,
                                "constraints_fulfilled_" + target, ylim=(0, 1))
 
         # scatterplot enabled constraints vs native constraints
-        plotting.enabled_native_scatterplot(ratio_fulfilled_constraints[target],
+        plotting.fulfilled_native_scatterplot(ratio_fulfilled_constraints[target],
                                             ratio_native_constraints[target], "enabledVsNative_" + target)
 
-        # STEP 3.5: get contact map
+
 def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grouped):
     idx_target = subset_labels.index('secstruct')
     idx_native = subset_labels.index('native')
 
-    plotting.contactMapGroups(subset_graphs[idx_target],
+    plotting.contactmap_subsets(subset_graphs[idx_target],
                               subset_graphs[idx_native],
                               subset_IDs[idx_target], 'secstruct_all')
 
@@ -316,17 +316,17 @@ def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grou
         for output_dir in output_dirs_grouped[group]:
             subset_graph_target = np.zeros(subset_graphs[0].shape, dtype=bool)
             try:
-                constraintPositions = np.genfromtxt(
+                constraint_residues = np.genfromtxt(
                     join(output_dir, subConstraintsFilename), dtype=None, usecols=(2, 4))
             except IOError as e:
-                constraintPositions = np.array([])
+                constraint_residues = np.array([])
 
-            if len(constraintPositions.shape) != 2:
-                constraintPositions = constraintPositions[np.newaxis, :]
-            if constraintPositions.shape[1] > 1:
-                constraintPositions -= 1  # shift, to let it start by 0 instead 1
-                subset_graph_target[constraintPositions[:, 0], constraintPositions[:, 1]] = True
-                plotting.contactMap(subset_graph_target,
+            if len(constraint_residues.shape) != 2:
+                constraint_residues = constraint_residues[np.newaxis, :]
+            if constraint_residues.shape[1] > 1:
+                constraint_residues -= 1  # shift, to let it start by 0 instead 1
+                subset_graph_target[constraint_residues[:, 0], constraint_residues[:, 1]] = True
+                plotting.contactmap(subset_graph_target,
                                     subset_graphs[idx_native] >= 0,
                                     os.path.basename(output_dir))
 

@@ -1,31 +1,35 @@
 from os.path import join
 import matplotlib as mpl
+
 mpl.use('Agg')
 # http://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server
 import matplotlib.pylab as plt
 import numpy as np
 
 plot_dir = './plots/2krkA'
-def groupBoxplots(data, ylabel, groupnames, filename=None, ylim=None):
+
+
+def subset_boxplots(data, ylabel, groupnames, filename=None, ylim=None):
     fig, ax1 = plt.subplots()
     ax1.boxplot(data.T)
-    xtickNames = plt.setp(ax1, xticklabels=groupnames)
-    plt.setp(xtickNames, rotation=45, fontsize=8)
+    xticknames = plt.setp(ax1, xticklabels=groupnames)
+    plt.setp(xticknames, rotation=45, fontsize=8)
     ax1.set_xlabel("group identifiers")
     ax1.set_ylabel(ylabel)
-    if not ylim is None:
+    if ylim is not None:
         ax1.set_ylim(ylim)
     if filename is None:
         plt.show()
     else:
         plt.savefig(join(plot_dir, filename + ".png"), bbox_inches='tight')
 
-def gdtScoreScatterplot(gdts, scores, gdtsBaseline=None, scoresBaseline=None, filename=None):
+
+def gdt_score_scatter(gdts, scores, gdts_baseline=None, scores_baseline=None, filename=None):
     plt.figure()
     plt.title(filename)
     plt.scatter(gdts, scores)
-    if scoresBaseline != None and gdtsBaseline != None:
-        plt.scatter(gdtsBaseline, scoresBaseline, c='grey', alpha=0.5)
+    if scores_baseline is not None and gdts_baseline is not None:
+        plt.scatter(gdts_baseline, scores_baseline, c='grey', alpha=0.5)
     plt.xlabel('gdtmm')
     plt.xlim((0, 1))
     plt.ylabel('score')
@@ -34,7 +38,8 @@ def gdtScoreScatterplot(gdts, scores, gdtsBaseline=None, scoresBaseline=None, fi
     else:
         plt.savefig(join(plot_dir, "scatter", filename + ".png"), bbox_inches='tight')
 
-def enabled_native_scatterplot(enabledConstraints, nativeConstraints, filename=None):
+
+def fulfilled_native_scatterplot(enabledConstraints, nativeConstraints, filename=None):
     fig, ax = plt.subplots()
     ax.set_aspect('equal')
     ax.scatter(enabledConstraints.flatten(), nativeConstraints.flatten())
@@ -47,7 +52,8 @@ def enabled_native_scatterplot(enabledConstraints, nativeConstraints, filename=N
     else:
         plt.savefig(join(plot_dir, filename + ".png"), bbox_inches='tight')
 
-def contactMap(contactMatrix, contactMatrixNative, filename=None):
+
+def contactmap(contactMatrix, contactMatrixNative, filename=None):
     truePositiveMatrix = np.logical_and(
         contactMatrix,
         contactMatrixNative)
@@ -87,36 +93,37 @@ def contactMap(contactMatrix, contactMatrixNative, filename=None):
     else:
         plt.savefig(join(plot_dir, "contactmaps", filename + ".png"), bbox_inches='tight')
 
+
 # STEP 3.6: get contact map for groups
-def contactMapGroups(adjacency, adjacency_nat, unique, filename=None):
+def contactmap_subsets(subset_graph, subset_graph_native, unique, filename=None):
     plt.figure()
-    contactMatrixNative = adjacency_nat >= 0
-    plt.scatter(*np.where(contactMatrixNative + contactMatrixNative.T), c='g', alpha=0.2)
+    contactmatrix_native = subset_graph_native >= 0
+    plt.scatter(*np.where(contactmatrix_native + contactmatrix_native.T), c='g', alpha=0.2)
 
-    def drawScatter(contactMatrix, contactMatrixNative, group, color='b'):
-        truePositiveMatrix = np.logical_and(
-            contactMatrix,
-            contactMatrixNative)
-        falsePositiveMatrix = np.logical_and(
-            contactMatrix,
-            np.logical_not(contactMatrixNative))
-        truePositive = np.sum(truePositiveMatrix)
-        falsePositive = np.sum(falsePositiveMatrix)
-        falseNegatives = np.sum(np.logical_and(
-            np.logical_not(contactMatrix),
-            contactMatrixNative))
+    def draw_scatter(contactmatrix, contactmatrix_native, group, color='b'):
+        true_positive_matrix = np.logical_and(
+            contactmatrix,
+            contactmatrix_native)
+        false_positive_matrix = np.logical_and(
+            contactmatrix,
+            np.logical_not(contactmatrix_native))
+        true_positive = np.sum(true_positive_matrix)
+        false_positive = np.sum(false_positive_matrix)
+        false_negatives = np.sum(np.logical_and(
+            np.logical_not(contactmatrix),
+            contactmatrix_native))
 
-        precision = truePositive / (truePositive + falsePositive)
-        recall = truePositive / (truePositive + falseNegatives)
+        precision = true_positive / (true_positive + false_positive)
+        recall = true_positive / (true_positive + false_negatives)
 
         # http://matplotlib.org/examples/pylab_examples/scatter_star_poly.html
         if color == 'k':
             alpha = 0.5
         else:
             alpha = 1.0
-        tp = plt.scatter(*np.where(truePositiveMatrix.T), c=color, alpha=alpha, marker='s',
+        tp = plt.scatter(*np.where(true_positive_matrix.T), c=color, alpha=alpha, marker='s',
                          label='TP-group{}'.format(group))
-        fp = plt.scatter(*np.where(falsePositiveMatrix), c=color, alpha=alpha, marker='^',
+        fp = plt.scatter(*np.where(false_positive_matrix), c=color, alpha=alpha, marker='^',
                          label='FP-group{}'.format(group))
 
     plt.title("contact map")
@@ -125,7 +132,7 @@ def contactMapGroups(adjacency, adjacency_nat, unique, filename=None):
 
     colors = ['r', 'g', 'b', 'y', 'c', 'm', 'k']
     for group, groupid in enumerate(unique):
-        drawScatter(adjacency == groupid, contactMatrixNative, group, color=colors[group])
+        draw_scatter(subset_graph == groupid, contactmatrix_native, group, color=colors[group])
 
     '''
     plt.legend(
@@ -136,7 +143,7 @@ def contactMapGroups(adjacency, adjacency_nat, unique, filename=None):
     '''
 
     # Set the ticks
-    n = adjacency.shape[0]
+    n = subset_graph.shape[0]
     ticks = np.arange(0, n, 5)
     labels = range(ticks.size)
     plt.xticks(ticks)
