@@ -27,6 +27,7 @@ pymol.finish_launching()
 import constraintSubsets
 import checkConstraints
 import secondaryStructurePrediction
+import plotting
 
 
 def parse_args():
@@ -240,33 +241,6 @@ def plot():
     scores = np.array(scores)
     gdts = np.array(gdts)
 
-    def groupBoxplots(data, ylabel, groupnames, filename=None, ylim=None):
-        fig, ax1 = plt.subplots()
-        ax1.boxplot(data.T)
-        xtickNames = plt.setp(ax1, xticklabels=groupnames)
-        plt.setp(xtickNames, rotation=45, fontsize=8)
-        ax1.set_xlabel("group identifiers")
-        ax1.set_ylabel(ylabel)
-        if not ylim is None:
-            ax1.set_ylim(ylim)
-        if filename is None:
-            plt.show()
-        else:
-            plt.savefig(join("plots", args.proteinID, filename + ".png"), bbox_inches='tight')
-
-    def gdtScoreScatterplot(gdts, scores, gdtsBaseline=None, scoresBaseline=None, filename=None):
-        plt.figure()
-        plt.title("{} {}".format(args.proteinID, filename))
-        plt.scatter(gdts, scores)
-        if scoresBaseline != None and gdtsBaseline != None:
-            plt.scatter(gdtsBaseline, scoresBaseline, c='grey', alpha=0.5)
-        plt.xlabel('gdtmm')
-        plt.xlim((0, 1))
-        plt.ylabel('score')
-        if filename is None:
-            plt.show()
-        else:
-            plt.savefig(join("plots", args.proteinID, "scatter", filename + ".png"), bbox_inches='tight')
 
     for group, label in enumerate(dirs):
         if "individual" in label:
@@ -341,107 +315,6 @@ def plot():
     plt.savefig(join("plots", args.proteinID, "enabledVsNative.png"), bbox_inches='tight')
 
     # STEP 3.5: get contact map
-    def contactMap(contactMatrix, contactMatrixNative, filename=None):
-        truePositiveMatrix = np.logical_and(
-            contactMatrix,
-            contactMatrixNative)
-        falsePositiveMatrix = np.logical_and(
-            contactMatrix,
-            np.logical_not(contactMatrixNative))
-        truePositive = np.sum(truePositiveMatrix)
-        falsePositive = np.sum(falsePositiveMatrix)
-        falseNegatives = np.sum(np.logical_and(
-            np.logical_not(contactMatrix),
-            contactMatrixNative))
-
-        precision = truePositive / (truePositive + falsePositive)
-        recall = truePositive / (truePositive + falseNegatives)
-
-        plt.figure()
-        plt.scatter(*np.where(contactMatrixNative + contactMatrixNative.T), c='g', alpha=0.2)
-        plt.scatter(*np.where(truePositiveMatrix.T), c='b', alpha=0.5)
-        plt.scatter(*np.where(falsePositiveMatrix), c='r', alpha=0.5)
-        plt.title("contact map")
-        plt.xlabel("constraint position on backbone")
-        plt.ylabel("constraint position on backbone")
-
-        plt.text(5, 10, "precision:{:.2%}\nrecall:{:.2%}".format(precision, recall))
-
-        # Set the ticks
-        n = contactMatrix.shape[0]
-        ticks = np.arange(0, n, 5)
-        labels = range(ticks.size)
-        plt.xticks(ticks)
-        plt.yticks(ticks)
-        plt.xlim(0, n)
-        plt.ylim(0, n)
-
-        if filename is None:
-            plt.show()
-        else:
-            plt.savefig(join("plots", args.proteinID, "contactmaps", filename + ".png"), bbox_inches='tight')
-
-    # STEP 3.6: get contact map for groups
-    def contactMapGroups(adjacency, adjacency_nat, filename=None):
-        plt.figure()
-        contactMatrixNative = adjacency_nat >= 0
-        plt.scatter(*np.where(contactMatrixNative + contactMatrixNative.T), c='g', alpha=0.2)
-
-        def drawScatter(contactMatrix, contactMatrixNative, group, color='b'):
-            truePositiveMatrix = np.logical_and(
-                contactMatrix,
-                contactMatrixNative)
-            falsePositiveMatrix = np.logical_and(
-                contactMatrix,
-                np.logical_not(contactMatrixNative))
-            truePositive = np.sum(truePositiveMatrix)
-            falsePositive = np.sum(falsePositiveMatrix)
-            falseNegatives = np.sum(np.logical_and(
-                np.logical_not(contactMatrix),
-                contactMatrixNative))
-
-            precision = truePositive / (truePositive + falsePositive)
-            recall = truePositive / (truePositive + falseNegatives)
-
-            # http://matplotlib.org/examples/pylab_examples/scatter_star_poly.html
-            if color == 'k':
-                alpha = 0.5
-            else:
-                alpha = 1.0
-            tp = plt.scatter(*np.where(truePositiveMatrix.T), c=color, alpha=alpha, marker='s',
-                             label='TP-group{}'.format(group))
-            fp = plt.scatter(*np.where(falsePositiveMatrix), c=color, alpha=alpha, marker='^',
-                             label='FP-group{}'.format(group))
-
-        plt.title("contact map")
-        plt.xlabel("constraint position on backbone")
-        plt.ylabel("constraint position on backbone")
-
-        colors = ['r', 'g', 'b', 'y', 'c', 'm', 'k']
-        for group, groupid in enumerate(unique):
-            drawScatter(adjacency == groupid, contactMatrixNative, group, color=colors[group])
-
-        '''
-        plt.legend(
-            scatterpoints=1,
-            loc='lower left',
-            ncol=3,
-            fontsize=8)
-        '''
-
-        # Set the ticks
-        n = adjacency.shape[0]
-        ticks = np.arange(0, n, 5)
-        labels = range(ticks.size)
-        plt.xticks(ticks)
-        plt.yticks(ticks)
-        plt.xlim(0, n)
-        plt.ylim(0, n)
-
-        if filename is None:
-            plt.show()
-        else:
-            plt.savefig(join("plots", args.proteinID, "contactmaps", filename + ".png"), bbox_inches='tight')
 
     contactMapGroups(adjacency, adjacency_nat, 'allGroups')
 
@@ -458,29 +331,6 @@ def plot():
             constraintPositions -= 1  # shift, to let it start by 0 instead 1
             contactMatrix[constraintPositions[:, 0], constraintPositions[:, 1]] = True
             contactMap(contactMatrix, adjacency_nat >= 0, d)
-
-
-    def plotScoresAndEnabledConstraints(enabledConstraints, minScores):
-        # [1:] to discard baseline
-        baseline = minScores[0]
-        sorter = np.argsort(enabledConstraints[1:])
-        enabledConstraints = enabledConstraints[1:][sorter]
-        minScores = minScores[1:][sorter]
-
-        fig, ax1 = plt.subplots()
-        ax1.plot(enabledConstraints, color="red")
-        ax2 = ax1.twinx()
-        ax2.plot(minScores, color="blue")
-        ax2.plot((0, len(minScores) - 1), (baseline, baseline), "b--")
-
-        ax1.tick_params(axis='y', colors='red')
-        ax2.tick_params(axis='y', colors='blue')
-
-        ax1.set_xlabel("group identifier")
-        ax1.set_ylabel("ratio of enabled constraints")
-        ax2.set_ylabel("minimum energy score of the group")
-
-        plt.show()
 
         # TODO: this function fails at the moment anyway.
         # plotScoresAndEnabledConstraints(enabledConstraints, minScores)
