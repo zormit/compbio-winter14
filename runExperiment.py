@@ -284,15 +284,15 @@ def plot(output_dirs_grouped):
             pdbfiles = [join(output_dir, f) for f in os.listdir(output_dir)
                         if isfile(join(output_dir, f)) and f.endswith('.pdb')]
             for decoy, f in enumerate(pdbfiles):
-                fulfilled_constraints_decoy = checkConstraints.constraintsEnabledInDecoy(f, constraints_filename)
+                fulfilled_constraints_decoy = checkConstraints.constraints_fulfilled_decoy(f, constraints_filename)
                 ratio_fulfilled_constraints[group][i, decoy] = float(np.sum(fulfilled_constraints_decoy)) / len(fulfilled_constraints_decoy)
 
     baseline = 'native'
     for target in ['secstruct', 'random']:
-        partial_enabledConstraints = np.r_[ratio_fulfilled_constraints[baseline],
+        ratio_fulfilled_constraints_merged = np.r_[ratio_fulfilled_constraints[baseline],
                                            ratio_fulfilled_constraints[target]]
         partial_subset_names = subset_names[baseline] + subset_names[target]
-        plotting.groupBoxplots(partial_enabledConstraints,
+        plotting.groupBoxplots(ratio_fulfilled_constraints_merged,
                                "ratio constraints fulfilled", partial_subset_names,
                                "constraints_fulfilled_" + target, ylim=(0, 1))
 

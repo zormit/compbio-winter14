@@ -25,14 +25,13 @@ def native_constraints_subset(constraints_filename):
     return fulfilled_constraints
 
 
-
-def constraintsEnabledInDecoy(decoyFilename, constraintsFilename, threshold = 8.0):
+def constraints_fulfilled_decoy(decoy_filename, constraints_filename):
     cmd.reinitialize()
-    decoyLabel = 'decoy_0'
-    cmd.load(decoyFilename, decoyLabel)
-    decoyDistances = list()
+    decoy_label = 'decoy_0'
+    cmd.load(decoy_filename, decoy_label)
+    decoy_distances = list()
     try:
-        constraints = np.genfromtxt(constraintsFilename, dtype=None, usecols=(1,2,3,4,6,7))
+        constraints = np.genfromtxt(constraints_filename, dtype=None, usecols=(1,2,3,4,6,7))
     except IOError as e:
         # no constraints and old numpy -> circumvent with "one constraint disabled"
         return [False]
@@ -41,24 +40,24 @@ def constraintsEnabledInDecoy(decoyFilename, constraintsFilename, threshold = 8.
     if constraints.shape[0] == 0:
         return [False]
 
-    lowerBounds = []
-    upperBounds = []
+    lower_bounds = []
+    upper_bounds = []
     for atomA, posA, atomB, posB, lowerBound, upperBound in constraints:
         template = "{}///{}/{}"
-        lowerBounds.append(lowerBound)
-        upperBounds.append(upperBound)
+        lower_bounds.append(lowerBound)
+        upper_bounds.append(upperBound)
         # cmd.distance would draw the constraints
-        decoyDistances.append(cmd.get_distance(
-            template.format(decoyLabel,posA,atomA),
-            template.format(decoyLabel,posB,atomB)))
-    decoyDistances = np.array(decoyDistances)
-    lowerBounds = np.array(lowerBounds)
-    upperBounds = np.array(upperBounds)
+        decoy_distances.append(cmd.get_distance(
+            template.format(decoy_label,posA,atomA),
+            template.format(decoy_label,posB,atomB)))
+    decoy_distances = np.array(decoy_distances)
+    lower_bounds = np.array(lower_bounds)
+    upper_bounds = np.array(upper_bounds)
 
     # enabled means, it is inside the bounds.
-    constraintsEnabled = np.logical_and(lowerBounds <= decoyDistances, decoyDistances <= upperBounds)
+    fullfilled_constraints = np.logical_and(lower_bounds <= decoy_distances, decoy_distances <= upper_bounds)
 
-    return constraintsEnabled
+    return fullfilled_constraints
 
 def writeDistancesToConstraintFile(realProteinFilename, inputPath, proteinID, logger):
     groundTruthLabel = 'groundTruth'
