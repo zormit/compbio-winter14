@@ -304,16 +304,9 @@ def plot(output_dirs_grouped):
                                "ratio constraints fulfilled", partial_subset_names,
                                "constraints_fulfilled_" + target, ylim=(0, 1))
 
-
-    # scatterplot enabled constraints vs native constraints
-    fig, ax = plt.subplots()
-    ax.set_aspect('equal')
-    ax.scatter(enabledConstraints.flatten(), nativeConstraints.flatten())
-    ax.set_xlabel("enabled constraints")
-    ax.set_ylabel("native constraints")
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    plt.savefig(join("plots", args.proteinID, "enabledVsNative.png"), bbox_inches='tight')
+        # scatterplot enabled constraints vs native constraints
+        plotting.enabled_native_scatterplot(enabledConstraints[target],
+            nativeConstraints[target], "enabledVsNative_" + target)
 
     # STEP 3.5: get contact map
 
