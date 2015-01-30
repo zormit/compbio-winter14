@@ -1,13 +1,14 @@
 import pymol
 from pymol import cmd
 
-def extractSecondaryStructure(filename):
+
+def extract_secondary_structure(filename):
     label = 'targetStructure'
     cmd.load(filename, label)
 
     pymol.stored_ss = []
     cmd.iterate(label, 'stored_ss.append(ss)')
 
-    secondaryStructure = ''.join(pymol.stored_ss)
+    secondary_structure = ''.join(pymol.stored_ss)
 
-    return secondaryStructure
+    return secondary_structure

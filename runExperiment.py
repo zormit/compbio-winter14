@@ -71,22 +71,22 @@ def generate_constraint_subsets(input_path, protein_ID, logger):
     # STEP 1: generate constraint groups, i.e. subsets of all constraints
     logger.info("starting: generate constraint groups")
 
-    nativeFile = "{}.pdb".format(join(input_path, protein_ID))
+    native_filename = "{}.pdb".format(join(input_path, protein_ID))
 
-    secondaryStructure = secondaryStructurePrediction.extractSecondaryStructure(nativeFile)
-    sequenceLength = len(secondaryStructure)
-    logger.info("secondary structure:{}".format(secondaryStructure))
+    secondary_structure = secondaryStructurePrediction.extract_secondary_structure(native_filename)
+    sequenceLength = len(secondary_structure)
+    logger.info("secondary structure:{}".format(secondary_structure))
     logger.debug("sequence length:{}".format(sequenceLength))
 
-    constraintFile = checkConstraints.writeDistancesToConstraintFile(
-        nativeFile, input_path, protein_ID, logger)
+    constraint_filename = checkConstraints.writeDistancesToConstraintFile(
+        native_filename, input_path, protein_ID, logger)
 
     subset_graph_SS, counts, subset_IDs = constraintSubsets.generateSSContraintSubsets(
-        secondaryStructure, constraintFile, logger)
+        secondary_structure, constraint_filename, logger)
 
     subset_graph_rand = constraintSubsets.generateRandomGroups(sequenceLength,
-                                                               constraintFile, counts, subset_IDs)
-    subset_graph_native = constraintSubsets.generateNativeContraints(constraintFile, sequenceLength)
+                                                               constraint_filename, counts, subset_IDs)
+    subset_graph_native = constraintSubsets.generateNativeContraints(constraint_filename, sequenceLength)
 
     subset_graph_all = np.zeros(subset_graph_native.shape, dtype=int)
     subset_graph_baseline = subset_graph_all - 1
@@ -98,7 +98,7 @@ def generate_constraint_subsets(input_path, protein_ID, logger):
 
     logger.info("finished: generate constraint groups")
 
-    return constraintFile, subset_graphs, subset_IDs_all, subset_labels
+    return constraint_filename, subset_graphs, subset_IDs_all, subset_labels
 
 
 def write_constraint_subset_files(output_path, constraint_filename,
