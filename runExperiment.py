@@ -146,47 +146,45 @@ def protein_structure_prediction(input_path, output_paths, protein_ID,
     for output_dir in output_paths:
 
         if not debug:
-            relaxFlags = ['-abinitio:relax',
+            relax_flags = ['-abinitio:relax',
                           '-relax:fast']
-            nStruct = 20
+            number_of_decoys = 20
         else:
             # debug mode => not relaxing yet ;)
-            relaxFlags = []
-            nStruct = 2
+            relax_flags = []
+            number_of_decoys = 2
 
         # Standard Filenames.
         # TODO: put in some config?
-        filePrefix = join(input_path, protein_ID)
-        sequenceFile = "{}.fasta".format(filePrefix)
-        frag3File = "{}.200.3mers".format(filePrefix)
-        frag9File = "{}.200.9mers".format(filePrefix)
-        nativeFile = "{}.pdb".format(filePrefix)
+        file_prefix = join(input_path, protein_ID)
+        sequence_filename = "{}.fasta".format(file_prefix)
+        frag3_filename = "{}.200.3mers".format(file_prefix)
+        frag9_filename = "{}.200.9mers".format(file_prefix)
+        native_filename = "{}.pdb".format(file_prefix)
         subset_filename = join(output_dir, subset_basefilename)
 
-        FNULL = open(os.devnull, 'w')
-
-        ## Run Prediction
+        # Run Prediction
         # TODO: hardcoded path
         logger.info(("starting rosetta-run on {} at {}").format(
             subset_filename, strftime('%H:%M:%S')))
         rosetta_abinitio = '/home/lassner/rosetta-3.5/rosetta_source/bin/AbinitioRelax.linuxgccrelease'
         rosetta_cmd = [rosetta_abinitio,
-                       '-in:file:fasta', sequenceFile,
-                       '-in:file:frag3', frag3File,
-                       '-in:file:frag9', frag9File,
-                       '-in:file:native', nativeFile,
+                       '-in:file:fasta', sequence_filename,
+                       '-in:file:frag3', frag3_filename,
+                       '-in:file:frag9', frag9_filename,
+                       '-in:file:native', native_filename,
                        '-constraints:cst_file', subset_filename,
-                       '-out:nstruct', str(nStruct),
+                       '-out:nstruct', str(number_of_decoys),
                        '-out:pdb',
                        '-out:path', output_dir,
                        '-out:sf', join(output_dir, 'score.fsc'),
                        '-out:file:silent', join(output_dir, 'default.out'),
                        '-mute core.io.database',
-                       '-database', '/home/lassner/rosetta-3.5/rosetta_database/'] + relaxFlags
+                       '-database', '/home/lassner/rosetta-3.5/rosetta_database/'] + relax_flags
         logger.debug("executing rosetta with:{}".format(" ".join(rosetta_cmd)))
         try:
-            subprocess.call(rosetta_cmd,
-                            stdout=FNULL, stderr=subprocess.STDOUT)
+            subprocess.call(rosetta_cmd, stdout=open(os.devnull, 'w'),
+                            stderr=subprocess.STDOUT)
         except OSError:
             logger.exception("error calling rosetta. skipping.")
             break
