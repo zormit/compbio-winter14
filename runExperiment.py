@@ -111,7 +111,8 @@ def generate_constraint_subsets(input_path, protein_ID, logger):
 
 
 def write_constraint_subset_files(output_path, constraint_filename,
-                                  subset_graph, subset_IDs, dir_prefix, logger):
+                                  subset_graph, subset_IDs, dir_prefix,
+                                  logger, config):
     constraint_residues = np.genfromtxt(constraint_filename,
                                         dtype=None, usecols=(2, 4))
     constraint_residues -= 1  # shift, to let it start by 0 instead 1
@@ -122,9 +123,6 @@ def write_constraint_subset_files(output_path, constraint_filename,
     # load file as array of lines
     with open(constraint_filename) as constraint_file:
         constraints = np.array(constraint_file.readlines())
-
-    prefix, suffix = os.path.split(constraint_filename)[-1].rsplit('.', 1)
-    subset_basefilename = "{}_subset.{}".format(prefix, suffix)
 
     output_dirs = []
 
@@ -137,7 +135,8 @@ def write_constraint_subset_files(output_path, constraint_filename,
         output_dirs.append(output_dir)
 
         # copy subset to its own file. name generated from base constraint file
-        subset_filename = join(output_dir, subset_basefilename)
+        subset_filename = join(output_dir,
+                               config.get('filename', 'constraint_subset'))
         logger.debug("writing sub-constraints to:{}".format(subset_filename))
         with open(subset_filename, 'w') as subset:
             # TODO allow for changed weights
@@ -145,11 +144,11 @@ def write_constraint_subset_files(output_path, constraint_filename,
             subset.writelines(
                 constraints[subset_indices])
 
-    return output_dirs, subset_basefilename
+    return output_dirs
 
 
 def protein_structure_prediction(input_path, output_paths, protein_ID,
-                                 subset_basefilename, logger, debug, config):
+                                 logger, debug, config):
     logger.info("starting: PSP for all constraint subsets")
 
     for output_dir in output_paths:
@@ -170,7 +169,8 @@ def protein_structure_prediction(input_path, output_paths, protein_ID,
         frag3_filename = "{}.200.3mers".format(file_prefix)
         frag9_filename = "{}.200.9mers".format(file_prefix)
         native_filename = "{}.pdb".format(file_prefix)
-        subset_filename = join(output_dir, subset_basefilename)
+        subset_filename = join(output_dir,
+                               config.get('filename', 'constraint_subset'))
 
         # Run Prediction
         logger.info(("starting rosetta-run on {} at {}").format(
@@ -213,7 +213,7 @@ def rescore_prediction(input_path, output_paths, protein_ID, logger, config):
                        '-in:file:s'] + pdbfiles + [
                        '-in:file:fullatom',
                        '-out:file:scorefile', join(output_dir,
-                                    config.get('filenames', 'rescore')),
+                                    config.get('filename', 'rescore')),
                        '-native', native_file,
                        '-database', config.get('rosetta', 'database')]
         try:
@@ -239,7 +239,7 @@ def plot(output_dirs_grouped, config):
 
         for output_dir in output_dirs_grouped[group]:
             data = np.genfromtxt(
-                join(output_dir, config.get('filenames', 'rescore')),
+                join(output_dir, config.get('filename', 'rescore')),
                 dtype=None, usecols=(1, 22), skip_header=1)
             scores[group].append(data[:, 0])
             gdts[group].append(data[:, 1])
@@ -274,16 +274,14 @@ def plot(output_dirs_grouped, config):
         plotting.subset_boxplots(partial_gdts, "gdt",
                                partial_subset_names, "gdts_" + target, ylim=(0, 1))
 
-    # TODO: hardcoded.
-    subConstraintsFilename = "2krkA_contact_constraints_withNativeDistances_subset.txt"
-
     ratio_fulfilled_constraints = {}
     ratio_native_constraints = {}
     for group in output_dirs_grouped:
         ratio_fulfilled_constraints[group] = np.zeros(scores[group].shape)
         ratio_native_constraints[group] = np.zeros(scores[group].shape)
         for i, output_dir in enumerate(output_dirs_grouped[group]):
-            constraints_filename = join(output_dir, subConstraintsFilename)
+            constraints_filename = join(output_dir,
+                                        config.get('filename', 'constraint_subset'))
 
             native_constraints_subset = checkConstraints.native_constraints_subset(constraints_filename)
             ratio_native_constraints_subset = float(np.sum(native_constraints_subset)) / len(native_constraints_subset)
@@ -309,7 +307,7 @@ def plot(output_dirs_grouped, config):
                                             ratio_native_constraints[target], "enabledVsNative_" + target)
 
 
-def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grouped):
+def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grouped, config):
     idx_target = subset_labels.index('secstruct')
     idx_native = subset_labels.index('native')
 
@@ -317,15 +315,13 @@ def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grou
                               subset_graphs[idx_native],
                               subset_IDs[idx_target], 'secstruct_all')
 
-    # TODO: hardcoded.
-    subConstraintsFilename = "2krkA_contact_constraints_withNativeDistances_subset.txt"
-
     for group in output_dirs_grouped:
         for output_dir in output_dirs_grouped[group]:
             subset_graph_target = np.zeros(subset_graphs[0].shape, dtype=bool)
             try:
                 constraint_residues = np.genfromtxt(
-                    join(output_dir, subConstraintsFilename), dtype=None, usecols=(2, 4))
+                    join(output_dir, config.get('filename', 'constraint_subset')),
+                    dtype=None, usecols=(2, 4))
             except IOError as e:
                 constraint_residues = np.array([])
 
@@ -367,9 +363,9 @@ def main(argv=None):
         prediction_paths_grouped = {}
         for i, label in enumerate(subset_labels):
             # write file for every subset of constraints
-            prediction_paths, subset_basefilename = write_constraint_subset_files(
+            prediction_paths = write_constraint_subset_files(
                 protein_output_path, constraint_filename,
-                subset_graphs[i], subset_IDs[i], label, logger)
+                subset_graphs[i], subset_IDs[i], label, logger, config)
             prediction_paths_grouped[label] = prediction_paths
 
         # reduce grouped paths to a consecutive list
@@ -377,14 +373,14 @@ def main(argv=None):
 
         protein_structure_prediction(
             protein_input_path, prediction_paths_all, args.protein_ID,
-            subset_basefilename, logger, args.debug, config)
+            logger, args.debug, config)
 
         rescore_prediction(protein_input_path, prediction_paths_all,
                            args.protein_ID, logger, config)
 
         plot(prediction_paths_grouped, config)
         plot_contact_maps(subset_graphs, subset_labels, subset_IDs,
-                          prediction_paths_grouped)
+                          prediction_paths_grouped, config)
 
     except KeyboardInterrupt:
         logger.info("terminating...")
