@@ -253,7 +253,6 @@ def plot(output_dirs_grouped):
 
     target = 'secstruct'
     baseline = 'baseline'  # could also be 'all' or 'native'
-
     for i, name in enumerate(subset_names[target]):
         plotting.gdtScoreScatterplot(gdts[target][i], scores[target][i],
                                      gdts[baseline][0], scores[baseline][0],
@@ -337,13 +336,6 @@ def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grou
                 plotting.contactMap(subset_graph_target,
                         subset_graphs[idx_native] >= 0,
                         os.path.basename(output_dir))
-
-        # TODO: this function fails at the moment anyway.
-        # plotScoresAndEnabledConstraints(enabledConstraints, minScores)
-
-
-        # STEP 4: Run predicition with combinations of promising groups
-        # TODO ^
 
 
 def main(argv=None):

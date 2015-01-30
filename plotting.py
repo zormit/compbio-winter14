@@ -148,25 +148,3 @@ def contactMapGroups(adjacency, adjacency_nat, unique, filename=None):
         plt.show()
     else:
         plt.savefig(join(plot_dir, "contactmaps", filename + ".png"), bbox_inches='tight')
-
-def plotScoresAndEnabledConstraints(enabledConstraints, minScores):
-    # [1:] to discard baseline
-    baseline = minScores[0]
-    sorter = np.argsort(enabledConstraints[1:])
-    enabledConstraints = enabledConstraints[1:][sorter]
-    minScores = minScores[1:][sorter]
-
-    fig, ax1 = plt.subplots()
-    ax1.plot(enabledConstraints, color="red")
-    ax2 = ax1.twinx()
-    ax2.plot(minScores, color="blue")
-    ax2.plot((0, len(minScores) - 1), (baseline, baseline), "b--")
-
-    ax1.tick_params(axis='y', colors='red')
-    ax2.tick_params(axis='y', colors='blue')
-
-    ax1.set_xlabel("group identifier")
-    ax1.set_ylabel("ratio of enabled constraints")
-    ax2.set_ylabel("minimum energy score of the group")
-
-    plt.show()
