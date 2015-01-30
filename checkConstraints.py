@@ -9,7 +9,7 @@ def nativeConstraintsInDecoy(decoyFilename, constraintsFilename):
     try:
         constraints = np.genfromtxt(constraintsFilename, dtype=None, usecols=(6, 7, 11))
     except IOError as e:
-    # no constraints and old numpy -> circumvent with "one constraint disabled"
+        # no constraints and old numpy -> circumvent with "one constraint disabled"
         return [False]
 
     # no constraints -> circumvent with "one constraint disabled"
@@ -35,7 +35,7 @@ def constraintsEnabledInDecoy(decoyFilename, constraintsFilename, threshold = 8.
     try:
         constraints = np.genfromtxt(constraintsFilename, dtype=None, usecols=(1,2,3,4,6,7))
     except IOError as e:
-    # no constraints and old numpy -> circumvent with "one constraint disabled"
+        # no constraints and old numpy -> circumvent with "one constraint disabled"
         return [False]
 
     # no constraints -> circumvent with "one constraint disabled"
@@ -50,8 +50,8 @@ def constraintsEnabledInDecoy(decoyFilename, constraintsFilename, threshold = 8.
         upperBounds.append(upperBound)
         # cmd.distance would draw the constraints
         decoyDistances.append(cmd.get_distance(
-                    template.format(decoyLabel,posA,atomA),
-                    template.format(decoyLabel,posB,atomB)))
+            template.format(decoyLabel,posA,atomA),
+            template.format(decoyLabel,posB,atomB)))
     decoyDistances = np.array(decoyDistances)
     lowerBounds = np.array(lowerBounds)
     upperBounds = np.array(upperBounds)
@@ -74,13 +74,13 @@ def writeDistancesToConstraintFile(realProteinFilename, inputPath, proteinID, lo
     for atomA, posA, atomB, posB in constraints:
         template = "{}///{}/{}"
         groundTruthDistances.append(cmd.get_distance(
-                    template.format(groundTruthLabel,posA,atomA),
-                    template.format(groundTruthLabel,posB,atomB)))
+            template.format(groundTruthLabel,posA,atomA),
+            template.format(groundTruthLabel,posB,atomB)))
 
     # do some path & filename magic
     constraintWithDistFilename = os.path.join(
-            inputPath, 'generated',
-            '{}_contact_constraints_withNativeDistances.txt'.format(proteinID))
+        inputPath, 'generated',
+        '{}_contact_constraints_withNativeDistances.txt'.format(proteinID))
 
     logger.debug("writing file: {}".format(constraintWithDistFilename))
 
@@ -108,11 +108,11 @@ def checkConstraints(realProteinFilename, decoyFilename, constraintsFilename, th
         template = "{}///{}/{}"
         # cmd.distance would draw the constraints
         decoyDistances.append(cmd.get_distance(
-                    template.format(decoyLabel,posA,atomA),
-                    template.format(decoyLabel,posB,atomB)))
+            template.format(decoyLabel,posA,atomA),
+            template.format(decoyLabel,posB,atomB)))
         groundTruthDistances.append(cmd.get_distance(
-                    template.format(groundTruthLabel,posA,atomA),
-                    template.format(groundTruthLabel,posB,atomB)))
+            template.format(groundTruthLabel,posA,atomA),
+            template.format(groundTruthLabel,posB,atomB)))
 
     decoyDistances = np.array(decoyDistances)
     groundTruthDistances = np.array(groundTruthDistances)
@@ -121,14 +121,14 @@ def checkConstraints(realProteinFilename, decoyFilename, constraintsFilename, th
     positive = decoyDistances<=threshold
 
     truePositive = np.sum(np.logical_and(
-                positive,
-                trueConstraints))
+        positive,
+        trueConstraints))
     falsePositive = np.sum(np.logical_and(
-                positive,
-                np.logical_not(trueConstraints)))
+        positive,
+        np.logical_not(trueConstraints)))
     falseNegatives = np.sum(np.logical_and(
-                np.logical_not(positive),
-                trueConstraints))
+        np.logical_not(positive),
+        trueConstraints))
 
     precision = truePositive/(truePositive+falsePositive)
     recall = truePositive/(truePositive+falseNegatives)

@@ -29,7 +29,7 @@ def generateSSContraintSubsets(secondaryStructure, constraintsFilename, logger, 
 
     # compute a unique number for the combination of two groups
     adjacency[constraintPositions[:,0],constraintPositions[:,1]] = (
-            groups[constraintPositions[:,0]] + groups[constraintPositions[:,1]] * (groups.max()+1))
+        groups[constraintPositions[:,0]] + groups[constraintPositions[:,1]] * (groups.max()+1))
 
     frequencies = scipy.stats.itemfreq(adjacency.flatten())
     unique,counts = frequencies[:,0],frequencies[:,1]

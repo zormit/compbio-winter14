@@ -214,14 +214,14 @@ def rescore_prediction(input_path, output_paths, protein_ID, logger):
         FNULL = open(os.devnull, 'w')
         rosetta_score = '/home/lassner/rosetta-3.5/rosetta_source/bin/score.linuxgccrelease'
         scoring_cmd = [rosetta_score,
-                         '-in:file:s'] + pdbfiles + [
-                            '-in:file:fullatom',
-                            '-out:file:scorefile', join(output_dir, 'scoreV2.fsc'),  # TODO: hardcoded.
-                            '-native', native_file,
-                            '-database', '/home/lassner/rosetta-3.5/rosetta_database/']
+                       '-in:file:s'] + pdbfiles + [
+                          '-in:file:fullatom',
+                          '-out:file:scorefile', join(output_dir, 'scoreV2.fsc'),  # TODO: hardcoded.
+                          '-native', native_file,
+                          '-database', '/home/lassner/rosetta-3.5/rosetta_database/']
         try:
             subprocess.call(scoring_cmd,
-                        stdout=FNULL, stderr=subprocess.STDOUT)
+                            stdout=FNULL, stderr=subprocess.STDOUT)
         except OSError:
             logger.exception("error calling rosetta. skipping.")
             break
@@ -305,9 +305,9 @@ def plot(output_dirs_grouped):
 
         # scatterplot enabled constraints vs native constraints
         plotting.enabled_native_scatterplot(enabledConstraints[target],
-            nativeConstraints[target], "enabledVsNative_" + target)
+                                            nativeConstraints[target], "enabledVsNative_" + target)
 
-    # STEP 3.5: get contact map
+        # STEP 3.5: get contact map
 def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grouped):
     idx_target = subset_labels.index('secstruct')
     idx_native = subset_labels.index('native')
@@ -334,8 +334,8 @@ def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grou
                 constraintPositions -= 1  # shift, to let it start by 0 instead 1
                 subset_graph_target[constraintPositions[:, 0], constraintPositions[:, 1]] = True
                 plotting.contactMap(subset_graph_target,
-                        subset_graphs[idx_native] >= 0,
-                        os.path.basename(output_dir))
+                                    subset_graphs[idx_native] >= 0,
+                                    os.path.basename(output_dir))
 
 
 def main(argv=None):

@@ -115,9 +115,9 @@ def contactMapGroups(adjacency, adjacency_nat, unique, filename=None):
         else:
             alpha = 1.0
         tp = plt.scatter(*np.where(truePositiveMatrix.T), c=color, alpha=alpha, marker='s',
-                            label='TP-group{}'.format(group))
+                         label='TP-group{}'.format(group))
         fp = plt.scatter(*np.where(falsePositiveMatrix), c=color, alpha=alpha, marker='^',
-                            label='FP-group{}'.format(group))
+                         label='FP-group{}'.format(group))
 
     plt.title("contact map")
     plt.xlabel("constraint position on backbone")
