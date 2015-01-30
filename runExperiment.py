@@ -309,22 +309,34 @@ def plot(output_dirs_grouped):
             nativeConstraints[target], "enabledVsNative_" + target)
 
     # STEP 3.5: get contact map
+def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grouped):
+    idx_target = subset_labels.index('secstruct')
+    idx_native = subset_labels.index('native')
 
-    contactMapGroups(adjacency, adjacency_nat, 'allGroups')
+    plotting.contactMapGroups(subset_graphs[idx_target],
+                              subset_graphs[idx_native],
+                              subset_IDs[idx_target], 'secstruct_all')
 
-    for d in dirs:
-        contactMatrix = np.zeros(adjacency.shape, dtype=bool)
-        try:
-            constraintPositions = np.genfromtxt(join(outputPath, d, subConstraintsFilename), dtype=None, usecols=(2, 4))
-        except IOError as e:
-            constraintPositions = np.array([])
+    # TODO: hardcoded.
+    subConstraintsFilename = "2krkA_contact_constraints_withNativeDistances_subset.txt"
 
-        if len(constraintPositions.shape) != 2:
-            constraintPositions = constraintPositions[np.newaxis, :]
-        if constraintPositions.shape[1] > 1:
-            constraintPositions -= 1  # shift, to let it start by 0 instead 1
-            contactMatrix[constraintPositions[:, 0], constraintPositions[:, 1]] = True
-            contactMap(contactMatrix, adjacency_nat >= 0, d)
+    for group in output_dirs_grouped:
+        for output_dir in output_dirs_grouped[group]:
+            subset_graph_target = np.zeros(subset_graphs[0].shape, dtype=bool)
+            try:
+                constraintPositions = np.genfromtxt(
+                    join(output_dir, subConstraintsFilename), dtype=None, usecols=(2, 4))
+            except IOError as e:
+                constraintPositions = np.array([])
+
+            if len(constraintPositions.shape) != 2:
+                constraintPositions = constraintPositions[np.newaxis, :]
+            if constraintPositions.shape[1] > 1:
+                constraintPositions -= 1  # shift, to let it start by 0 instead 1
+                subset_graph_target[constraintPositions[:, 0], constraintPositions[:, 1]] = True
+                plotting.contactMap(subset_graph_target,
+                        subset_graphs[idx_native] >= 0,
+                        os.path.basename(output_dir))
 
         # TODO: this function fails at the moment anyway.
         # plotScoresAndEnabledConstraints(enabledConstraints, minScores)
@@ -377,6 +389,8 @@ def main(argv=None):
                            args.protein_ID, logger)
 
         plot(prediction_paths_grouped)
+        plot_contact_maps(subset_graphs, subset_labels, subset_IDs,
+                          prediction_paths_grouped)
 
     except KeyboardInterrupt:
         logger.info("terminating...")
