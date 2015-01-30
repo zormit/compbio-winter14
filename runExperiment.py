@@ -5,6 +5,7 @@ import os
 from os.path import isfile, join
 import subprocess
 import argparse
+from ConfigParser import ConfigParser
 import numpy as np
 import logging
 from time import strftime
@@ -24,6 +25,7 @@ import plotting
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('config_filename', help='path to config')
     parser.add_argument('input_path', help='path to input directory')
     parser.add_argument('output_path', help='path to output directory')
     parser.add_argument('protein_ID',
@@ -34,6 +36,13 @@ def parse_args():
                         help='be talkative')
 
     return parser.parse_args()
+
+
+def parse_config(config_filename):
+    config = ConfigParser()
+    config.read(config_filename)
+
+    return config
 
 
 def setup_logger(args):
@@ -140,7 +149,7 @@ def write_constraint_subset_files(output_path, constraint_filename,
 
 
 def protein_structure_prediction(input_path, output_paths, protein_ID,
-                                 subset_basefilename, logger, debug):
+                                 subset_basefilename, logger, debug, config):
     logger.info("starting: PSP for all constraint subsets")
 
     for output_dir in output_paths:
@@ -164,11 +173,9 @@ def protein_structure_prediction(input_path, output_paths, protein_ID,
         subset_filename = join(output_dir, subset_basefilename)
 
         # Run Prediction
-        # TODO: hardcoded path
         logger.info(("starting rosetta-run on {} at {}").format(
             subset_filename, strftime('%H:%M:%S')))
-        rosetta_abinitio = '/home/lassner/rosetta-3.5/rosetta_source/bin/AbinitioRelax.linuxgccrelease'
-        rosetta_cmd = [rosetta_abinitio,
+        rosetta_cmd = [config.get('rosetta', 'abinitio'),
                        '-in:file:fasta', sequence_filename,
                        '-in:file:frag3', frag3_filename,
                        '-in:file:frag9', frag9_filename,
@@ -190,7 +197,7 @@ def protein_structure_prediction(input_path, output_paths, protein_ID,
             break
 
 
-def rescore_prediction(input_path, output_paths, protein_ID, logger):
+def rescore_prediction(input_path, output_paths, protein_ID, logger, config):
     logger.info("starting: rescore all predictions")
 
     native_file = "{}.pdb".format(join(input_path, protein_ID))
@@ -202,13 +209,13 @@ def rescore_prediction(input_path, output_paths, protein_ID, logger):
 
         logger.debug("rescoring {}".format(output_dir))
 
-        rosetta_score = '/home/lassner/rosetta-3.5/rosetta_source/bin/score.linuxgccrelease'
-        scoring_cmd = [rosetta_score,
+        scoring_cmd = [config.get('rosetta', 'score'),
                        '-in:file:s'] + pdbfiles + [
                        '-in:file:fullatom',
-                       '-out:file:scorefile', join(output_dir, 'scoreV2.fsc'),  # TODO: hardcoded.
+                       '-out:file:scorefile', join(output_dir,
+                                    config.get('filenames', 'rescore')),
                        '-native', native_file,
-                       '-database', '/home/lassner/rosetta-3.5/rosetta_database/']
+                       '-database', config.get('rosetta', 'database')]
         try:
             subprocess.call(scoring_cmd, stdout=open(os.devnull, 'w'),
                             stderr=subprocess.STDOUT)
@@ -217,7 +224,7 @@ def rescore_prediction(input_path, output_paths, protein_ID, logger):
             break
 
 
-def plot(output_dirs_grouped):
+def plot(output_dirs_grouped, config):
     # STEP 3: Compare scores and fulfillments of constraints
     logging.info("starting STEP 3: compare scores and fulfillments of constraints")
 
@@ -231,8 +238,9 @@ def plot(output_dirs_grouped):
         subset_names[group] = []
 
         for output_dir in output_dirs_grouped[group]:
-            # TODO: hardcoded.
-            data = np.genfromtxt(join(output_dir, 'scoreV2.fsc'), dtype=None, usecols=(1, 22), skip_header=1)
+            data = np.genfromtxt(
+                join(output_dir, config.get('filenames', 'rescore')),
+                dtype=None, usecols=(1, 22), skip_header=1)
             scores[group].append(data[:, 0])
             gdts[group].append(data[:, 1])
 
@@ -339,8 +347,9 @@ def main(argv=None):
         sys.argv.extend(argv)
 
     try:
-        # Process arguments
+        # Process arguments and config
         args = parse_args()
+        config = parse_config(args.config_filename)
 
         # start logging
         logger = setup_logger(args)
@@ -368,12 +377,12 @@ def main(argv=None):
 
         protein_structure_prediction(
             protein_input_path, prediction_paths_all, args.protein_ID,
-            subset_basefilename, logger, args.debug)
+            subset_basefilename, logger, args.debug, config)
 
         rescore_prediction(protein_input_path, prediction_paths_all,
-                           args.protein_ID, logger)
+                           args.protein_ID, logger, config)
 
-        plot(prediction_paths_grouped)
+        plot(prediction_paths_grouped, config)
         plot_contact_maps(subset_graphs, subset_labels, subset_IDs,
                           prediction_paths_grouped)
 
