@@ -177,7 +177,8 @@ def protein_structure_prediction(input_path, output_paths, protein_ID,
         # TODO: hardcoded path
         logger.info(("starting rosetta-run on {} at {}").format(
             subset_filename, strftime('%H:%M:%S')))
-        rosetta_cmd = ['/home/lassner/rosetta-3.5/rosetta_source/bin/AbinitioRelax.linuxgccrelease',
+        rosetta_abinitio = '/home/lassner/rosetta-3.5/rosetta_source/bin/AbinitioRelax.linuxgccrelease'
+        rosetta_cmd = [rosetta_abinitio,
                        '-in:file:fasta', sequenceFile,
                        '-in:file:frag3', frag3File,
                        '-in:file:frag9', frag9File,
@@ -191,8 +192,12 @@ def protein_structure_prediction(input_path, output_paths, protein_ID,
                        '-mute core.io.database',
                        '-database', '/home/lassner/rosetta-3.5/rosetta_database/'] + relaxFlags
         logger.debug("executing rosetta with:{}".format(" ".join(rosetta_cmd)))
-        subprocess.call(rosetta_cmd,
-                        stdout=FNULL, stderr=subprocess.STDOUT)
+        try:
+            subprocess.call(rosetta_cmd,
+                            stdout=FNULL, stderr=subprocess.STDOUT)
+        except OSError:
+            logger.exception("error calling rosetta. skipping.")
+            break
 
 
 def rescore_prediction(input_path, output_paths, protein_ID, logger):
@@ -207,13 +212,19 @@ def rescore_prediction(input_path, output_paths, protein_ID, logger):
 
         logger.debug("rescoring {}".format(output_dir))
         FNULL = open(os.devnull, 'w')
-        subprocess.call(['/home/lassner/rosetta-3.5/rosetta_source/bin/score.linuxgccrelease',
+        rosetta_score = '/home/lassner/rosetta-3.5/rosetta_source/bin/score.linuxgccrelease'
+        scoring_cmd = [rosetta_score,
                          '-in:file:s'] + pdbfiles + [
                             '-in:file:fullatom',
                             '-out:file:scorefile', join(output_dir, 'scoreV2.fsc'),  # TODO: hardcoded.
                             '-native', native_file,
-                            '-database', '/home/lassner/rosetta-3.5/rosetta_database/'],
+                            '-database', '/home/lassner/rosetta-3.5/rosetta_database/']
+        try:
+            subprocess.call(scoring_cmd,
                         stdout=FNULL, stderr=subprocess.STDOUT)
+        except OSError:
+            logger.exception("error calling rosetta. skipping.")
+            break
 
 
 def plot(output_dirs_grouped):
@@ -369,7 +380,7 @@ def main(argv=None):
         plot(prediction_paths_grouped)
 
     except KeyboardInterrupt:
-        ### handle keyboard interrupt silently ###
+        logger.info("terminating...")
         return 0
 
 
