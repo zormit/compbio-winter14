@@ -25,6 +25,7 @@ import plotting
 
 
 def parse_args():
+    """ parse commandline arguments """
     parser = argparse.ArgumentParser()
     parser.add_argument('config_filename', help='path to config')
     parser.add_argument('protein_ID',
@@ -38,6 +39,7 @@ def parse_args():
 
 
 def parse_config(config_filename):
+    """ read in config file """
     config = ConfigParser()
     config.read(config_filename)
 
@@ -45,8 +47,9 @@ def parse_config(config_filename):
 
 
 def setup_logger(args, config):
-    # according to https://docs.python.org/2/howto/logging-cookbook.html
-
+    """ set up logger
+        according to https://docs.python.org/2/howto/logging-cookbook.html
+    """
     logger = logging.getLogger('nocap')
     logger.setLevel(logging.DEBUG)
 
@@ -76,6 +79,15 @@ def setup_logger(args, config):
 
 
 def generate_constraint_subsets(input_path, protein_ID, logger):
+    """ generates adjacency matrices for different constraint subset-groups
+
+    :return:
+            * constraint_filename: the full constraint file,
+                                   with native distances in the last column
+            * subset_graphs: a list of matrices
+            * subset_IDs_all: a list of corresponding IDs (each ID in the matrix is a subset)
+            * subset_labels: a list of names for the subset-groups
+    """
     # STEP 1: generate constraint groups, i.e. subsets of all constraints
     logger.info("starting: generate constraint groups")
 
@@ -112,6 +124,9 @@ def generate_constraint_subsets(input_path, protein_ID, logger):
 def write_constraint_subset_files(output_path, constraint_filename,
                                   subset_graph, subset_IDs, dir_prefix,
                                   logger, config):
+    """ write a constraint file for each subset in a set of subsets.
+    :return: the directories, that correspond to these files
+    """
     constraint_residues = np.genfromtxt(constraint_filename,
                                         dtype=None, usecols=(2, 4))
     constraint_residues -= 1  # shift, to let it start by 0 instead 1
@@ -148,6 +163,7 @@ def write_constraint_subset_files(output_path, constraint_filename,
 
 def protein_structure_prediction(input_path, output_dirs, protein_ID,
                                  logger, debug, config):
+    """ rosetta abinitio prediction wrapper """
     logger.info("starting: PSP for all constraint subsets")
 
     for output_dir in output_dirs:
@@ -197,6 +213,7 @@ def protein_structure_prediction(input_path, output_dirs, protein_ID,
 
 
 def rescore_prediction(input_path, output_paths, protein_ID, logger, config):
+    """ rosetta scoring for every decoy-set, to get a constraint-penalty-free score """
     logger.info("starting: rescore all predictions")
 
     native_file = "{}.pdb".format(join(input_path, protein_ID))
@@ -224,7 +241,12 @@ def rescore_prediction(input_path, output_paths, protein_ID, logger, config):
 
 
 def plot(output_dirs_grouped, config):
-    # STEP 3: Compare scores and fulfillments of constraints
+    """ prepare and plot:
+
+        * gdt-score-scatterplot
+        * gdt boxplot / score boxplot
+        * ratio of fulfilled constraints boxplot
+    """
     logging.info("starting STEP 3: compare scores and fulfillments of constraints")
 
     scores = {}
@@ -307,6 +329,7 @@ def plot(output_dirs_grouped, config):
 
 
 def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grouped, config, logger):
+    """ prepare plotting and plot contact maps """
     idx_target = subset_labels.index('secstruct')
     idx_native = subset_labels.index('native')
 
@@ -338,6 +361,15 @@ def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grou
 
 
 def main(argv=None):
+    """ performs all steps in the prediction and analysis:
+
+        * preparation (python stuff)
+        * preparation (generate subsets and write to filesystem)
+        * prediction (run rosetta)
+        * rescoring (rosetta again)
+        * plotting (read in results and visualize)
+    """
+
     # append argv to system argv if existing
     if argv is None:
         argv = sys.argv
