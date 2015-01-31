@@ -123,7 +123,7 @@ def write_constraint_subset_files(output_path, constraint_filename,
     with open(constraint_filename) as constraint_file:
         constraints = np.array(constraint_file.readlines())
 
-    output_dirs = []
+    subset_dirs = []
 
     for group, subset_ID in enumerate(subset_IDs):
 
@@ -131,7 +131,7 @@ def write_constraint_subset_files(output_path, constraint_filename,
         output_dir = join(output_path, '{}_{}'.format(dir_prefix, group))
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-        output_dirs.append(output_dir)
+        subset_dirs.append(output_dir)
 
         # copy subset to its own file. name generated from base constraint file
         subset_filename = join(output_dir,
@@ -143,14 +143,14 @@ def write_constraint_subset_files(output_path, constraint_filename,
             subset.writelines(
                 constraints[subset_indices])
 
-    return output_dirs
+    return subset_dirs
 
 
-def protein_structure_prediction(input_path, output_paths, protein_ID,
+def protein_structure_prediction(input_path, output_dirs, protein_ID,
                                  logger, debug, config):
     logger.info("starting: PSP for all constraint subsets")
 
-    for output_dir in output_paths:
+    for output_dir in output_dirs:
 
         if not debug:
             relax_flags = ['-abinitio:relax',
@@ -363,29 +363,29 @@ def main(argv=None):
             generate_constraint_subsets(protein_input_path,
                                         args.protein_ID, logger))
 
-        prediction_paths_grouped = {}
+        subset_dirs_grouped = {}
         for i, label in enumerate(subset_labels):
             # write file for every subset of constraints
-            prediction_paths = write_constraint_subset_files(
+            subset_dirs = write_constraint_subset_files(
                 protein_output_path, constraint_filename,
                 subset_graphs[i], subset_IDs[i], label, logger, config)
-            prediction_paths_grouped[label] = prediction_paths
+            subset_dirs_grouped[label] = subset_dirs
 
-        # reduce grouped paths to a consecutive list
-        prediction_paths_all = sum(prediction_paths_grouped.values(), [])
+        # reduce grouped dirs to a consecutive list
+        subset_dirs_all = sum(subset_dirs_grouped.values(), [])
 
         protein_structure_prediction(
-            protein_input_path, prediction_paths_all, args.protein_ID,
+            protein_input_path, subset_dirs_all, args.protein_ID,
             logger, args.debug, config)
 
-        rescore_prediction(protein_input_path, prediction_paths_all,
+        rescore_prediction(protein_input_path, subset_dirs_all,
                            args.protein_ID, logger, config)
 
         # plot-a-lot
         plotting.plot_dir = plot_dir
-        plot(prediction_paths_grouped, config)
+        plot(subset_dirs_grouped, config)
         plot_contact_maps(subset_graphs, subset_labels, subset_IDs,
-                          prediction_paths_grouped, config, logger)
+                          subset_dirs_grouped, config, logger)
         plotting.constraint_distances_graph(constraint_filename, "distances")
 
     except KeyboardInterrupt:
