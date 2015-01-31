@@ -66,3 +66,9 @@ where a number >= 0 denotes a chosen residue pair. Same number means same subset
 
 To add other constraint subsets, simply add a matrix
 to the three datastructures in `generate_constraint_subsets()`.
+
+custom plots
+------------
+
+The plotting "system" is written in a way, that it is possible to compare different groups of subsets.
+For example, to use another target or baseline, modify the string variables accordingly.
