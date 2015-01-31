@@ -44,14 +44,14 @@ def parse_config(config_filename):
     return config
 
 
-def setup_logger(args):
+def setup_logger(args, config):
     # according to https://docs.python.org/2/howto/logging-cookbook.html
 
     logger = logging.getLogger('nocap')
     logger.setLevel(logging.DEBUG)
 
     # create file handler which logs even debug messages
-    file_handler = logging.FileHandler('nocap.log')
+    file_handler = logging.FileHandler(config.get('filename', 'log'))
     file_handler.setLevel(logging.DEBUG)
 
     # create console handler with a higher log level dependent on verbosity
@@ -347,7 +347,7 @@ def main(argv=None):
         config = parse_config(args.config_filename)
 
         # start logging
-        logger = setup_logger(args)
+        logger = setup_logger(args, config)
         logger.debug("start program with the following args: {}".format(args))
 
         # append protein ID to paths
