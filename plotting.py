@@ -63,26 +63,14 @@ def fulfilled_native_scatterplot(enabledConstraints, nativeConstraints, filename
         custom_savefig(filename)
 
 
-def contactmap(contactMatrix, contactMatrixNative, filename=None):
-    truePositiveMatrix = np.logical_and(
-        contactMatrix,
-        contactMatrixNative)
-    falsePositiveMatrix = np.logical_and(
-        contactMatrix,
-        np.logical_not(contactMatrixNative))
-    truePositive = np.sum(truePositiveMatrix)
-    falsePositive = np.sum(falsePositiveMatrix)
-    falseNegatives = np.sum(np.logical_and(
-        np.logical_not(contactMatrix),
-        contactMatrixNative))
-
-    precision = truePositive / (truePositive + falsePositive)
-    recall = truePositive / (truePositive + falseNegatives)
+def contactmap(contactmatrix, contactmatrix_native, filename=None):
+    precision, recall, true_positive_matrix, false_positive_matrix = _precision_recall(
+        contactmatrix, contactmatrix_native)
 
     plt.figure()
-    plt.scatter(*np.where(contactMatrixNative + contactMatrixNative.T), c='g', alpha=0.2)
-    plt.scatter(*np.where(truePositiveMatrix.T), c='b', alpha=0.5)
-    plt.scatter(*np.where(falsePositiveMatrix), c='r', alpha=0.5)
+    plt.scatter(*np.where(contactmatrix_native + contactmatrix_native.T), c='g', alpha=0.2)
+    plt.scatter(*np.where(true_positive_matrix.T), c='b', alpha=0.5)
+    plt.scatter(*np.where(false_positive_matrix), c='r', alpha=0.5)
     plt.title("contact map")
     plt.xlabel("constraint position on backbone")
     plt.ylabel("constraint position on backbone")
@@ -90,7 +78,7 @@ def contactmap(contactMatrix, contactMatrixNative, filename=None):
     plt.text(5, 10, "precision:{:.2%}\nrecall:{:.2%}".format(precision, recall))
 
     # Set the ticks
-    n = contactMatrix.shape[0]
+    n = contactmatrix.shape[0]
     ticks = np.arange(0, n, 5)
     labels = range(ticks.size)
     plt.xticks(ticks)
@@ -106,26 +94,13 @@ def contactmap(contactMatrix, contactMatrixNative, filename=None):
 
 # STEP 3.6: get contact map for groups
 def contactmap_subsets(subset_graph, subset_graph_native, unique, filename=None):
+    """ a complex contactmap with several constraint-subsets """
     plt.figure()
     contactmatrix_native = subset_graph_native >= 0
     plt.scatter(*np.where(contactmatrix_native + contactmatrix_native.T), c='g', alpha=0.2)
 
     def draw_scatter(contactmatrix, contactmatrix_native, group, color='b'):
-        true_positive_matrix = np.logical_and(
-            contactmatrix,
-            contactmatrix_native)
-        false_positive_matrix = np.logical_and(
-            contactmatrix,
-            np.logical_not(contactmatrix_native))
-        true_positive = np.sum(true_positive_matrix)
-        false_positive = np.sum(false_positive_matrix)
-        false_negatives = np.sum(np.logical_and(
-            np.logical_not(contactmatrix),
-            contactmatrix_native))
-
-        precision = true_positive / (true_positive + false_positive)
-        recall = true_positive / (true_positive + false_negatives)
-
+        _, _, true_positive_matrix, false_positive_matrix = _precision_recall(contactmatrix, contactmatrix_native)
         # http://matplotlib.org/examples/pylab_examples/scatter_star_poly.html
         if color == 'k':
             alpha = 0.5
@@ -140,6 +115,7 @@ def contactmap_subsets(subset_graph, subset_graph_native, unique, filename=None)
     plt.xlabel("constraint position on backbone")
     plt.ylabel("constraint position on backbone")
 
+    # TODO currently works only with 7 groups *ouch*
     colors = ['r', 'g', 'b', 'y', 'c', 'm', 'k']
     for group, groupid in enumerate(unique):
         draw_scatter(subset_graph == groupid, contactmatrix_native, group, color=colors[group])
@@ -167,10 +143,26 @@ def contactmap_subsets(subset_graph, subset_graph_native, unique, filename=None)
         custom_savefig(filename, 'contactmaps')
 
 
+def _precision_recall(contactmatrix, contactmatrix_native):
+    true_positive_matrix = np.logical_and(
+        contactmatrix,
+        contactmatrix_native)
+    false_positive_matrix = np.logical_and(
+        contactmatrix,
+        np.logical_not(contactmatrix_native))
+    true_positive = np.sum(true_positive_matrix)
+    false_positive = np.sum(false_positive_matrix)
+    false_negatives = np.sum(np.logical_and(
+        np.logical_not(contactmatrix),
+        contactmatrix_native))
+
+    precision = true_positive / (true_positive + false_positive)
+    recall = true_positive / (true_positive + false_negatives)
+
+    return precision, recall, true_positive_matrix, false_positive_matrix
+
 def constraint_distances_graph(constraints_filename, filename):
-    """ generates a simple graph, which shows the constraint distances
-        in an ascending manner
-    """
+    """ shows the constraint distances in an ascending manner """
     constraints = np.genfromtxt(constraints_filename, dtype=float, usecols=11)
     plt.figure()
     import ipdb;ipdb.set_trace()
