@@ -306,13 +306,16 @@ def plot(output_dirs_grouped, config):
                                             ratio_native_constraints[target], "enabledVsNative_" + target)
 
 
-def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grouped, config):
+def plot_contact_maps(subset_graphs, subset_labels, subset_IDs, output_dirs_grouped, config, logger):
     idx_target = subset_labels.index('secstruct')
     idx_native = subset_labels.index('native')
 
-    plotting.contactmap_subsets(subset_graphs[idx_target],
+    try:
+        plotting.contactmap_subsets(subset_graphs[idx_target],
                               subset_graphs[idx_native],
                               subset_IDs[idx_target], 'secstruct_all')
+    except IndexError:
+        logger.exception('the contactmap_subsets plot currently only works for <= 7 groups')
 
     for group in output_dirs_grouped:
         for output_dir in output_dirs_grouped[group]:
@@ -382,7 +385,7 @@ def main(argv=None):
         plotting.plot_dir = plot_dir
         plot(prediction_paths_grouped, config)
         plot_contact_maps(subset_graphs, subset_labels, subset_IDs,
-                          prediction_paths_grouped, config)
+                          prediction_paths_grouped, config, logger)
         plotting.constraint_distances_graph(constraint_filename, "distances")
 
     except KeyboardInterrupt:
