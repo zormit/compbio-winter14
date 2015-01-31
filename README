@@ -1,0 +1,74 @@
+noisy constraint analysis
+=========================
+
+Configuration
+-------------
+
+An example config can be found in `paths.cfg`. You most certaintly have
+to adapt it, such that your rosetta binaries and database are linked.
+Also make sure that for a protein with <pdb-id>, the input directory contains
+a directory with the same name and the following files:
+
+* Sequence File: <pdb-id>.fasta
+* Native Protein: <pdb-id>.pdb
+* Fragment Files: <pdb-id>.200.9mers, <pdb-id>.200.3mers
+* Noisy Constraint File: <pdb-id>_contact_constraints.txt
+
+Example structure of my input directory:
+
+    $ ls Data/input/**
+    Data/input/2h3jA:
+    2h3jA.200.3mers  2h3jA.200.9mers  2h3jA_contact_constraints.txt  2h3jA.fasta  2h3jA.pdb
+
+    Data/input/2krkA:
+    2krkA.200.3mers  2krkA.200.9mers  2krkA_contact_constraints.txt  2krkA.fasta  2krkA.pdb
+
+The section [filename] normally does not have to be changed.
+
+
+Basic Usage
+-----------
+
+To run the script, call:
+
+    ./runExperiment.py <config-filename> <pdb-id>
+
+When the run is successful, a lot of files will be generated:
+
+1. <input-dir>/<pdb-id>/generated/ will contain a constraint-file with the
+   measured native distances as a new column for each constraint/residue-pair.
+2. <output-dir>/<pdb-id>/ will have a subdirectory for each prediction with.
+
+   a) the constraint subset file, which will guide the prediction
+   b) the standard rosetta output, with decoys (pdb&silentfile) and score.fsc
+   c) the rescored scorefile (standard: scoreV2.fsc), with constraint-penalty-free scores.
+
+3. <plot-dir>/<pdb-id>/ will contain lots of plots.
+
+*Attention*: all these files will be overwritten by the scripts on a re-run.
+           (except decoys. to overwrite them, delete default.out in a subdir.)
+
+
+-----
+Flags
+-----
+
+* `-debug/-d` runs rosetta in a debug mode, i.e. without relaxing
+  and only predicting two decoys.
+* `-verbose/-v` gives you more information about what happens on the console.
+  but all this information and more can be found in the logfile anyway.
+
+constraint subset generation methods
+------------------------------------
+
+The datastructure to choose a constraint is basically an adjacency matrix,
+where a number >= 0 denotes a chosen residue pair. Same number means same subset.
+
+To add other constraint subsets, simply add a matrix
+to the three datastructures in `generate_constraint_subsets()`.
+
+custom plots
+------------
+
+The plotting "system" is written in a way, that it is possible to compare different groups of subsets.
+For example, to use another target or baseline, modify the string variables accordingly.

@@ -1,11 +1,8 @@
 import numpy as np
-import matplotlib.pylab as plt
-import pdb
 import scipy.stats
-import logging
 import random
 
-def generateSSContraintSubsets(secondaryStructure, constraintsFilename, numGroups=None):
+def generateSSContraintSubsets(secondaryStructure, constraintsFilename, logger, numGroups=None):
 
     n = len(secondaryStructure)
 
@@ -30,7 +27,7 @@ def generateSSContraintSubsets(secondaryStructure, constraintsFilename, numGroup
 
     # compute a unique number for the combination of two groups
     adjacency[constraintPositions[:,0],constraintPositions[:,1]] = (
-            groups[constraintPositions[:,0]] + groups[constraintPositions[:,1]] * (groups.max()+1))
+        groups[constraintPositions[:,0]] + groups[constraintPositions[:,1]] * (groups.max()+1))
 
     frequencies = scipy.stats.itemfreq(adjacency.flatten())
     unique,counts = frequencies[:,0],frequencies[:,1]
@@ -38,7 +35,7 @@ def generateSSContraintSubsets(secondaryStructure, constraintsFilename, numGroup
     unique, counts = unique[1:], counts[1:]
 
     maxNumGroups = len(unique)
-    logging.debug("there are {} different SS groups".format(maxNumGroups))
+    logger.info("there are {} different SS groups".format(maxNumGroups))
 
     if numGroups==None:
         numGroups=maxNumGroups
@@ -123,54 +120,3 @@ def generateNativeContraints(constraintsFilename, n=75):
     adjacency[constraintPositions[:,0].astype(int),constraintPositions[:,1].astype(int)] = constraintPositions[:,2] <= 8.0
     adjacency -= 1
     return adjacency
-
-
-
-if __name__ == "__main__":
-
-    secondaryStructure = 'LLLLLLLSSSSSSSSLLLLLLLHHHHHHHHLLLLSSSSSSSSLLLLLLLSSSSLLLLSSSSLHHHHHHSSSSSLL'
-    constraintsFilename = "Data/input/2h3jA_contact_constraints_with-distances.txt"
-
-    n = len(secondaryStructure)
-    # Group based on secondary structure (ss)
-    adjacency, counts, unique = generateSSContraintSubsets(secondaryStructure, constraintsFilename, 3)
-
-    plt.figure()
-    plt.bar(range(len(counts)-1),counts[1:])
-
-    plt.figure()
-    np.fill_diagonal(adjacency,np.max(adjacency)/10)
-    plt.imshow(adjacency, interpolation='none', origin="upper")
-    plt.title("contact map")
-    plt.xlabel("constraint position on backbone")
-    plt.ylabel("constraint position on backbone")
-
-    plt.show()
-
-    # plt.savefig("contactMap.pdf")
-
-    # # Group based on distance on primary structure (ps)
-    # maxDistance = 20
-    # distances,constraintPositions,chosenIds = generatePSContraintSubsets(constraintsFilename, maxDistance)
-
-    # plt.figure()
-    # barlist = plt.bar(range(len(distances)),distances)
-    # for k,v in enumerate(chosenIds):
-    #     if v: barlist[k].set_color('r')
-
-    # window = 3
-    # threshold = 60
-    # constraintScore,adjacency = generateOccurencyConstraintScores(constraintsFilename, len(secondaryStructure), window, threshold)
-
-    # plt.figure()
-    # plt.imshow(adjacency,origin="upper")
-    # plt.title("contact map")
-    # plt.xlabel("constraint position on backbone")
-    # plt.ylabel("constraint position on backbone")
-
-    # plt.figure()
-    # barlist = plt.bar(range(len(constraintScore)),constraintScore)
-    # for k,v in enumerate(constraintScore):
-    #     if v>threshold: barlist[k].set_color('r')
-
-    # plt.show()

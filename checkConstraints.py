@@ -1,61 +1,65 @@
 from __future__ import division
-import __main__
-__main__.pymol_argv = ['pymol','-qc'] # Pymol: quiet and no GUI
-import pymol
-pymol.finish_launching()
 from pymol import cmd
 import numpy as np
-import pdb
 import os
-import logging
 
 
-def nativeConstraintsInDecoy(decoyFilename, constraintsFilename):
+def native_constraints_subset(constraints_filename):
     try:
-        constraints = np.genfromtxt(constraintsFilename, dtype=None, usecols=(6,8))
+        constraints = np.genfromtxt(constraints_filename, dtype=None, usecols=(6, 7, 11))
     except IOError as e:
+        # no constraints and old numpy -> circumvent with "one constraint disabled"
         return [False]
 
-    if constraints.ndim == 0:
-        constraints = constraints.reshape(1)
+    # no constraints -> circumvent with "one constraint disabled"
+    if constraints.shape[0] == 0:
+        return [False]
 
-    return np.abs(constraints[:,0]-constraints[:,1])<1.5
+    lower_bounds = constraints[:, 0]
+    upper_bounds = constraints[:, 1]
+    native_distances = constraints[:, 2]
+
+    fulfilled_constraints = np.logical_and(lower_bounds <= native_distances,
+                                           native_distances <= upper_bounds)
+
+    return fulfilled_constraints
 
 
-
-def constraintsEnabledInDecoy(decoyFilename, constraintsFilename, threshold = 8.0):
+def constraints_fulfilled_decoy(decoy_filename, constraints_filename):
     cmd.reinitialize()
-    decoyLabel = 'decoy_0'
-    cmd.load(decoyFilename, decoyLabel)
-    decoyDistances = list()
+    decoy_label = 'decoy_0'
+    cmd.load(decoy_filename, decoy_label)
+    decoy_distances = list()
     try:
-        constraints = np.genfromtxt(constraintsFilename, dtype=None, usecols=(1,2,3,4,6,7))
+        constraints = np.genfromtxt(constraints_filename, dtype=None, usecols=(1,2,3,4,6,7))
     except IOError as e:
+        # no constraints and old numpy -> circumvent with "one constraint disabled"
         return [False]
 
-    if constraints.ndim == 0:
-        constraints = constraints.reshape(1)
+    # no constraints -> circumvent with "one constraint disabled"
+    if constraints.shape[0] == 0:
+        return [False]
 
-    lowerBounds = []
-    upperBounds = []
+    lower_bounds = []
+    upper_bounds = []
     for atomA, posA, atomB, posB, lowerBound, upperBound in constraints:
         template = "{}///{}/{}"
-        lowerBounds.append(lowerBound)
-        upperBounds.append(upperBound)
+        lower_bounds.append(lowerBound)
+        upper_bounds.append(upperBound)
         # cmd.distance would draw the constraints
-        decoyDistances.append(cmd.get_distance(
-                    template.format(decoyLabel,posA,atomA),
-                    template.format(decoyLabel,posB,atomB)))
-    decoyDistances = np.array(decoyDistances)
-    lowerBounds = np.array(lowerBounds)
-    upperBounds = np.array(upperBounds)
+        decoy_distances.append(cmd.get_distance(
+            template.format(decoy_label,posA,atomA),
+            template.format(decoy_label,posB,atomB)))
+    decoy_distances = np.array(decoy_distances)
+    lower_bounds = np.array(lower_bounds)
+    upper_bounds = np.array(upper_bounds)
 
     # enabled means, it is inside the bounds.
-    constraintsEnabled = np.logical_and(lowerBounds <= decoyDistances, decoyDistances <= upperBounds)
+    fullfilled_constraints = np.logical_and(lower_bounds <= decoy_distances, decoy_distances <= upper_bounds)
 
-    return constraintsEnabled
+    return fullfilled_constraints
 
-def writeDistancesToConstraintFile(realProteinFilename, inputPath, proteinID):
+def writeDistancesToConstraintFile(realProteinFilename, inputPath, proteinID, logger):
     groundTruthLabel = 'groundTruth'
     cmd.load(realProteinFilename, groundTruthLabel)
 
@@ -68,15 +72,15 @@ def writeDistancesToConstraintFile(realProteinFilename, inputPath, proteinID):
     for atomA, posA, atomB, posB in constraints:
         template = "{}///{}/{}"
         groundTruthDistances.append(cmd.get_distance(
-                    template.format(groundTruthLabel,posA,atomA),
-                    template.format(groundTruthLabel,posB,atomB)))
+            template.format(groundTruthLabel,posA,atomA),
+            template.format(groundTruthLabel,posB,atomB)))
 
     # do some path & filename magic
     constraintWithDistFilename = os.path.join(
-            inputPath, 'generated',
-            '{}_contact_constraints_withNativeDistances.txt'.format(proteinID))
+        inputPath, 'generated',
+        '{}_contact_constraints_withNativeDistances.txt'.format(proteinID))
 
-    logging.debug("writing file: {}".format(constraintWithDistFilename))
+    logger.debug("writing file: {}".format(constraintWithDistFilename))
 
     # add distance to each line of the old file
     with open(constraintWithDistFilename, 'w') as newConstraintsFile:
@@ -102,11 +106,11 @@ def checkConstraints(realProteinFilename, decoyFilename, constraintsFilename, th
         template = "{}///{}/{}"
         # cmd.distance would draw the constraints
         decoyDistances.append(cmd.get_distance(
-                    template.format(decoyLabel,posA,atomA),
-                    template.format(decoyLabel,posB,atomB)))
+            template.format(decoyLabel,posA,atomA),
+            template.format(decoyLabel,posB,atomB)))
         groundTruthDistances.append(cmd.get_distance(
-                    template.format(groundTruthLabel,posA,atomA),
-                    template.format(groundTruthLabel,posB,atomB)))
+            template.format(groundTruthLabel,posA,atomA),
+            template.format(groundTruthLabel,posB,atomB)))
 
     decoyDistances = np.array(decoyDistances)
     groundTruthDistances = np.array(groundTruthDistances)
@@ -115,21 +119,16 @@ def checkConstraints(realProteinFilename, decoyFilename, constraintsFilename, th
     positive = decoyDistances<=threshold
 
     truePositive = np.sum(np.logical_and(
-                positive,
-                trueConstraints))
+        positive,
+        trueConstraints))
     falsePositive = np.sum(np.logical_and(
-                positive,
-                np.logical_not(trueConstraints)))
+        positive,
+        np.logical_not(trueConstraints)))
     falseNegatives = np.sum(np.logical_and(
-                np.logical_not(positive),
-                trueConstraints))
+        np.logical_not(positive),
+        trueConstraints))
 
     precision = truePositive/(truePositive+falsePositive)
     recall = truePositive/(truePositive+falseNegatives)
 
     return precision, recall
-
-if __name__ == "__main__":
-    decoy = "/home/neeb/Data/input-bounded/2h3jA/2h3jA.pdb"
-    constraints = "/home/neeb/Data/input-bounded/2h3jA/2h3jA_contact_constraints.txt"
-    print constraintsEnabledInDecoy(decoy, constraints)
