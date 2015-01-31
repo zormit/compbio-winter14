@@ -378,10 +378,12 @@ def main(argv=None):
         rescore_prediction(protein_input_path, prediction_paths_all,
                            args.protein_ID, logger, config)
 
+        # plot-a-lot
         plotting.plot_dir = plot_dir
         plot(prediction_paths_grouped, config)
         plot_contact_maps(subset_graphs, subset_labels, subset_IDs,
                           prediction_paths_grouped, config)
+        plotting.constraint_distances_graph(constraint_filename, "distances")
 
     except KeyboardInterrupt:
         logger.info("terminating...")

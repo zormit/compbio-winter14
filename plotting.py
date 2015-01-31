@@ -16,6 +16,7 @@ def custom_savefig(filename, subdir = '', extension = '.png'):
     if not exists(save_dir):
         makedirs(save_dir)
     plt.savefig(join(save_dir, filename + extension), bbox_inches='tight')
+    plt.close()
 
 
 def subset_boxplots(data, ylabel, groupnames, filename=None, ylim=None):
@@ -164,3 +165,21 @@ def contactmap_subsets(subset_graph, subset_graph_native, unique, filename=None)
         plt.show()
     else:
         custom_savefig(filename, 'contactmaps')
+
+
+def constraint_distances_graph(constraints_filename, filename):
+    """ generates a simple graph, which shows the constraint distances
+        in an ascending manner
+    """
+    constraints = np.genfromtxt(constraints_filename, dtype=float, usecols=11)
+    plt.figure()
+    import ipdb;ipdb.set_trace()
+    sorter = np.argsort(constraints)
+    plt.plot(constraints[sorter])
+    plt.plot((0,len(constraints)), (8,8), color="red")
+    plt.xlabel("constraints")
+    plt.ylabel("distance in Angstrom")
+    if filename is None:
+        plt.show()
+    else:
+        custom_savefig(filename)
