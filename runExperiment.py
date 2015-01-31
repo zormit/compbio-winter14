@@ -283,14 +283,14 @@ def plot(output_dirs_grouped, config):
                                         config.get('filename', 'constraint_subset'))
 
             native_constraints_subset = checkConstraints.native_constraints_subset(constraints_filename)
-            ratio_native_constraints_subset = float(np.sum(native_constraints_subset)) / len(native_constraints_subset)
+            ratio_native_constraints_subset = np.sum(native_constraints_subset) / len(native_constraints_subset)
             ratio_native_constraints[group][i, :] = ratio_native_constraints_subset
 
             pdbfiles = [join(output_dir, f) for f in os.listdir(output_dir)
                         if isfile(join(output_dir, f)) and f.endswith('.pdb')]
             for decoy, f in enumerate(pdbfiles):
                 fulfilled_constraints_decoy = checkConstraints.constraints_fulfilled_decoy(f, constraints_filename)
-                ratio_fulfilled_constraints[group][i, decoy] = float(np.sum(fulfilled_constraints_decoy)) / len(fulfilled_constraints_decoy)
+                ratio_fulfilled_constraints[group][i, decoy] = np.sum(fulfilled_constraints_decoy) / len(fulfilled_constraints_decoy)
 
     baseline = 'native'
     for target in ['secstruct', 'random']:

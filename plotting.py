@@ -1,3 +1,4 @@
+from __future__ import division
 from os import makedirs
 from os.path import join, exists
 import matplotlib as mpl
