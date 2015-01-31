@@ -1,4 +1,5 @@
-from os.path import join
+from os import makedirs
+from os.path import join, exists
 import matplotlib as mpl
 
 mpl.use('Agg')
@@ -8,6 +9,12 @@ import numpy as np
 
 # if not overwritten by config, this is used
 plot_dir = './plots/'
+
+def custom_savefig(filename, subdir = '', extension = '.png'):
+    save_dir = join(plot_dir, subdir)
+    if not exists(save_dir):
+        makedirs(save_dir)
+    plt.savefig(join(save_dir, filename + extension), bbox_inches='tight')
 
 
 def subset_boxplots(data, ylabel, groupnames, filename=None, ylim=None):
@@ -22,7 +29,7 @@ def subset_boxplots(data, ylabel, groupnames, filename=None, ylim=None):
     if filename is None:
         plt.show()
     else:
-        plt.savefig(join(plot_dir, filename + ".png"), bbox_inches='tight')
+        custom_savefig(filename)
 
 
 def gdt_score_scatter(gdts, scores, gdts_baseline=None, scores_baseline=None, filename=None):
@@ -37,7 +44,7 @@ def gdt_score_scatter(gdts, scores, gdts_baseline=None, scores_baseline=None, fi
     if filename is None:
         plt.show()
     else:
-        plt.savefig(join(plot_dir, "scatter", filename + ".png"), bbox_inches='tight')
+        custom_savefig(filename, 'scatter')
 
 
 def fulfilled_native_scatterplot(enabledConstraints, nativeConstraints, filename=None):
@@ -51,7 +58,7 @@ def fulfilled_native_scatterplot(enabledConstraints, nativeConstraints, filename
     if filename is None:
         plt.show()
     else:
-        plt.savefig(join(plot_dir, filename + ".png"), bbox_inches='tight')
+        custom_savefig(filename)
 
 
 def contactmap(contactMatrix, contactMatrixNative, filename=None):
@@ -92,7 +99,7 @@ def contactmap(contactMatrix, contactMatrixNative, filename=None):
     if filename is None:
         plt.show()
     else:
-        plt.savefig(join(plot_dir, "contactmaps", filename + ".png"), bbox_inches='tight')
+        custom_savefig(filename, 'contactmaps')
 
 
 # STEP 3.6: get contact map for groups
@@ -155,4 +162,4 @@ def contactmap_subsets(subset_graph, subset_graph_native, unique, filename=None)
     if filename is None:
         plt.show()
     else:
-        plt.savefig(join(plot_dir, "contactmaps", filename + ".png"), bbox_inches='tight')
+        custom_savefig(filename, 'contactmaps')
